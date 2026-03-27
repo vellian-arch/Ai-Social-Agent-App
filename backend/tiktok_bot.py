@@ -1,0 +1,6 @@
+from app.workers.tiktok_bot import *  # noqa: F401,F403
+
+if __name__ == "__main__":
+    import runpy
+
+    runpy.run_module("app.workers.tiktok_bot", run_name="__main__")
