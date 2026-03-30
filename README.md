@@ -127,6 +127,8 @@ The root [requirements.txt](requirements.txt) points Streamlit Cloud at the back
 
 For production deployments, set `API_BASE_URL`, `BACKEND_PUBLIC_URL`, and `FRONTEND_APP_URL` to your hosted service URLs, not localhost.
 
+If you are using Streamlit Community Cloud, the dashboard URL should be set to `https://socialaiagent.streamlit.app`.
+
 ## Security Notes
 
 - Keep `.env` files out of version control.
