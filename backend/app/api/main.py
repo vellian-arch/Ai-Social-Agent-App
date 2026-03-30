@@ -6,6 +6,7 @@ import logging
 import os
 import base64
 import json
+import ipaddress
 import secrets
 import time
 import hmac
@@ -119,7 +120,7 @@ def get_deployment_warnings() -> list[str]:
         warnings.append("AUTH_SECRET is still using the default development value.")
 
     if FRONTEND_APP_URL.startswith("http://localhost") or FRONTEND_APP_URL.startswith("http://127.0.0.1"):
-        warnings.append("FRONTEND_APP_URL still points to localhost. Update it to your deployed dashboard URL.")
+        warnings.append("FRONTEND_APP_URL is not set to your deployed dashboard URL.")
 
     if not (paystack_enabled() or paypal_enabled() or dodo_enabled()):
         warnings.append("No billing provider is configured. Paystack, PayPal, or Dodo payments must be set for live billing.")
@@ -730,6 +731,54 @@ async def health():
         "deployment_ready": len(get_deployment_warnings()) == 0,
         "ai_ready": details["ai_ok"],
         "ai_mode": details["ai_mode"],
+    }
+
+
+def _extract_request_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "").strip()
+    if forwarded_for:
+        candidate = forwarded_for.split(",")[0].strip()
+        if candidate:
+            return candidate
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+    return request.client.host if request.client else ""
+
+
+async def _lookup_country_for_ip(ip_address_value: str) -> str:
+    if not ip_address_value:
+        return "Global / Other"
+    try:
+        parsed_ip = ipaddress.ip_address(ip_address_value)
+        if parsed_ip.is_private or parsed_ip.is_loopback or parsed_ip.is_reserved or parsed_ip.is_link_local:
+            return "Global / Other"
+    except ValueError:
+        return "Global / Other"
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        try:
+            response = await client.get(f"https://ipwho.is/{ip_address_value}")
+            if response.status_code != 200:
+                return "Global / Other"
+            payload = response.json()
+            if not payload.get("success"):
+                return "Global / Other"
+            country = (payload.get("country") or "").strip()
+            return country or "Global / Other"
+        except Exception:
+            return "Global / Other"
+
+
+@app.get("/api/deployment/country")
+async def api_deployment_country(request: Request):
+    get_authenticated_user(request)
+    ip_address_value = _extract_request_ip(request)
+    detected_country = await _lookup_country_for_ip(ip_address_value)
+    return {
+        "status": "ok",
+        "country": detected_country,
+        "ip_address": ip_address_value,
     }
 
 

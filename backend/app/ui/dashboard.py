@@ -28,6 +28,7 @@ st.set_page_config(
 # Backend API base URL
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 FRONTEND_APP_URL = os.getenv("FRONTEND_APP_URL", "http://localhost:8501")
+BACKEND_DOC_URL = API_BASE_URL if not API_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")) else "Configured backend URL"
 UPLOADS_DIR = Path(__file__).resolve().parents[3] / "uploads"
 
 # Initialize session state
@@ -128,6 +129,10 @@ if "profile_company" not in st.session_state:
     st.session_state.profile_company = "AI Solutions Inc."
 if "profile_timezone" not in st.session_state:
     st.session_state.profile_timezone = "UTC-5 (EST)"
+if "profile_country" not in st.session_state:
+    st.session_state.profile_country = "Global / Other"
+if "profile_country_source" not in st.session_state:
+    st.session_state.profile_country_source = "auto"
 if "email_alerts" not in st.session_state:
     st.session_state.email_alerts = True
 if "push_notifications" not in st.session_state:
@@ -221,6 +226,8 @@ def ensure_session_state():
         "profile_phone": "+1 (555) 123-4567",
         "profile_company": "AI Solutions Inc.",
         "profile_timezone": "UTC-5 (EST)",
+        "profile_country": "Global / Other",
+        "profile_country_source": "auto",
         "email_alerts": True,
         "push_notifications": True,
         "sms_alerts": False,
@@ -253,6 +260,172 @@ PLATFORM_PRICES = {
 }
 
 PLATFORM_LIST = ["WhatsApp", "TikTok", "YouTube", "Telegram", "Facebook", "Instagram"]
+
+PAYSTACK_SUPPORTED_COUNTRIES = {
+    "algeria",
+    "angola",
+    "benin",
+    "botswana",
+    "burkina faso",
+    "burundi",
+    "cabo verde",
+    "cameroon",
+    "central african republic",
+    "chad",
+    "comoros",
+    "cote d'ivoire",
+    "democratic republic of the congo",
+    "djibouti",
+    "egypt",
+    "equatorial guinea",
+    "eritrea",
+    "eswatini",
+    "ethiopia",
+    "gabon",
+    "gambia",
+    "ghana",
+    "guinea",
+    "guinea-bissau",
+    "kenya",
+    "lesotho",
+    "liberia",
+    "libya",
+    "madagascar",
+    "malawi",
+    "mali",
+    "mauritania",
+    "mauritius",
+    "morocco",
+    "mozambique",
+    "namibia",
+    "niger",
+    "nigeria",
+    "republic of the congo",
+    "rwanda",
+    "sao tome and principe",
+    "senegal",
+    "seychelles",
+    "sierra leone",
+    "somalia",
+    "south africa",
+    "south sudan",
+    "sudan",
+    "tanzania",
+    "togo",
+    "tunisia",
+    "uganda",
+    "zambia",
+    "zimbabwe",
+}
+
+COUNTRY_OPTIONS = [
+    "Global / Other",
+    "Nigeria",
+    "Ghana",
+    "Kenya",
+    "South Africa",
+    "Egypt",
+    "Morocco",
+    "Rwanda",
+    "Uganda",
+    "Tanzania",
+    "Zambia",
+    "Zimbabwe",
+    "Senegal",
+    "Cameroon",
+    "Cote d'Ivoire",
+    "Algeria",
+    "Botswana",
+    "Benin",
+    "Burkina Faso",
+    "Burundi",
+    "Cabo Verde",
+    "Chad",
+    "Comoros",
+    "Democratic Republic of the Congo",
+    "Republic of the Congo",
+    "Djibouti",
+    "Equatorial Guinea",
+    "Eritrea",
+    "Eswatini",
+    "Ethiopia",
+    "Gabon",
+    "Gambia",
+    "Guinea",
+    "Guinea-Bissau",
+    "Lesotho",
+    "Liberia",
+    "Libya",
+    "Madagascar",
+    "Malawi",
+    "Mali",
+    "Mauritania",
+    "Mauritius",
+    "Mozambique",
+    "Namibia",
+    "Niger",
+    "Sao Tome and Principe",
+    "Seychelles",
+    "Sierra Leone",
+    "Somalia",
+    "South Sudan",
+    "Sudan",
+    "Tunisia",
+]
+
+
+def _normalize_country_name(value: str) -> str:
+    return (value or "").strip().lower()
+
+
+def is_paystack_supported_country(country: str) -> bool:
+    normalized = _normalize_country_name(country)
+    if not normalized or normalized in {"global / other", "global", "other"}:
+        return False
+    return normalized in PAYSTACK_SUPPORTED_COUNTRIES
+
+
+def get_billing_country() -> str:
+    country = (st.session_state.get("profile_country") or "").strip()
+    return country or "Global / Other"
+
+
+def get_available_payment_rails(
+    country: str | None = None,
+    *,
+    paypal_live: bool = False,
+    dodo_live: bool = False,
+    paystack_live: bool = False,
+) -> list[str]:
+    selected_country = country or get_billing_country()
+    rails: list[str] = []
+    if paypal_live:
+        rails.append("PayPal")
+    if dodo_live:
+        rails.append("Dodo")
+    if paystack_live and is_paystack_supported_country(selected_country):
+        rails.append("Paystack")
+    return rails
+
+
+def normalize_country_option(value: str) -> str:
+    normalized = _normalize_country_name(value)
+    for option in COUNTRY_OPTIONS:
+        if _normalize_country_name(option) == normalized:
+            return option
+    return "Global / Other"
+
+
+def sync_billing_country_from_backend(force: bool = False) -> str:
+    if st.session_state.get("profile_country_source") == "manual" and not force:
+        return st.session_state.get("profile_country", "Global / Other")
+    payload = api_get("/api/deployment/country") or {}
+    detected_country = normalize_country_option(payload.get("country", ""))
+    if detected_country != "Global / Other":
+        st.session_state.profile_country = detected_country
+        st.session_state.profile_country_source = "auto"
+    return st.session_state.get("profile_country", "Global / Other")
+
 PLATFORM_CONNECTION_FIELDS = {
     "WhatsApp": [
         ("phone_id", "Phone Number ID", "Enter the WhatsApp Business phone number ID"),
@@ -290,10 +463,10 @@ def api_get(endpoint):
         headers = {}
         if st.session_state.get("auth_token"):
             headers["Authorization"] = f"Bearer {st.session_state.auth_token}"
-        cacheable = endpoint.startswith(("/api/products", "/api/clients", "/api/media", "/api/youtube/videos", "/api/conversations/", "/api/platform-connections", "/api/admin/", "/api/deployment/check", "/health", "/api/billing/plans"))
+        cacheable = endpoint.startswith(("/api/products", "/api/clients", "/api/media", "/api/youtube/videos", "/api/conversations/", "/api/platform-connections", "/api/admin/", "/api/deployment/check", "/api/deployment/country", "/health", "/api/billing/plans"))
         cache_key = (API_BASE_URL, endpoint, st.session_state.get("auth_token", ""))
         cached = st.session_state.api_cache.get(cache_key)
-        ttl = 30 if endpoint.startswith(("/api/admin/", "/api/deployment/check", "/health", "/api/billing/plans")) else 15 if endpoint.startswith(("/api/products", "/api/clients", "/api/media", "/api/youtube/videos", "/api/conversations/", "/api/platform-connections")) else 10
+        ttl = 3600 if endpoint.startswith("/api/deployment/country") else 30 if endpoint.startswith(("/api/admin/", "/api/deployment/check", "/health", "/api/billing/plans")) else 15 if endpoint.startswith(("/api/products", "/api/clients", "/api/media", "/api/youtube/videos", "/api/conversations/", "/api/platform-connections")) else 10
         if cacheable and cached and (time.time() - cached["ts"] < ttl):
             return cached["data"]
         response = requests.get(f"{API_BASE_URL}{endpoint}", headers=headers, timeout=10)
@@ -5363,6 +5536,8 @@ def connections_page():
 # =============================================================================
 def settings_page():
     theme = get_theme_tokens()
+    if st.session_state.get("profile_country_source") != "manual":
+        sync_billing_country_from_backend()
     st.markdown(f"<h1 class='gradient-text'>⚙️ {t('settings')}</h1>", unsafe_allow_html=True)
     st.markdown("---")
     
@@ -5384,12 +5559,16 @@ def settings_page():
                 timezone_value = st.session_state.profile_timezone if st.session_state.profile_timezone in timezone_options else "UTC-5 (EST)"
                 timezone = st.selectbox("Timezone", ["UTC-8 (PST)", "UTC-5 (EST)", "UTC+0 (GMT)", "UTC+1 (CET)", "UTC+8 (SGT)"], 
                                       index=timezone_options.index(timezone_value))
+                country_value = st.session_state.profile_country if st.session_state.profile_country in COUNTRY_OPTIONS else "Global / Other"
+                country = st.selectbox("Billing Country", COUNTRY_OPTIONS, index=COUNTRY_OPTIONS.index(country_value))
             
             if st.form_submit_button(t('save_changes'), type="primary"):
                 st.session_state.profile_name = name
                 st.session_state.profile_phone = phone
                 st.session_state.profile_company = company
                 st.session_state.profile_timezone = timezone
+                st.session_state.profile_country = country
+                st.session_state.profile_country_source = "manual"
                 DataManager.add_notification("Profile updated successfully", "success")
                 st.success("✅ Profile updated!")
     
@@ -5455,62 +5634,67 @@ def settings_page():
                 st.success("✅ Settings saved!")
                 st.rerun()
 
-        st.markdown("---")
-        st.subheader("🚀 Deployment Readiness")
-        deployment_check = api_get("/api/deployment/check") or {}
-        readiness_cols = st.columns(3)
-        with readiness_cols[0]:
-            st.metric("Ready", "Yes" if deployment_check.get("deployment_ready") else "No")
-        with readiness_cols[1]:
-            st.metric("Billing", "Ready" if deployment_check.get("billing_ready") else "Missing")
-        with readiness_cols[2]:
-            st.metric("Uploads", "Ready" if deployment_check.get("upload_ready") else "Missing")
+    st.markdown("---")
+    st.subheader("🚀 Deployment Readiness")
+    deployment_check = api_get("/api/deployment/check") or {}
+    readiness_cols = st.columns(3)
+    with readiness_cols[0]:
+        st.metric("Ready", "Yes" if deployment_check.get("deployment_ready") else "No")
+    with readiness_cols[1]:
+        st.metric("Billing", "Ready" if deployment_check.get("billing_ready") else "Missing")
+    with readiness_cols[2]:
+        st.metric("Uploads", "Ready" if deployment_check.get("upload_ready") else "Missing")
 
-        st.metric("AI", "AI status active" if deployment_check.get("ai_mode") == "active" else "AI status fallback")
+    st.metric("AI", "AI status active" if deployment_check.get("ai_mode") == "active" else "AI status fallback")
 
-        warnings = deployment_check.get("deployment_warnings") or []
-        if deployment_check.get("ai_mode") == "fallback":
-            st.info("AI fallback mode is active. Add your AI key to enable AI-powered responses.")
-        if warnings:
-            st.warning("Review the items below before deploying:")
-            for warning in warnings:
-                st.write(f"- {warning}")
-        else:
-            st.success("Deployment checks look good. You can test and deploy from here.")
+    warnings = deployment_check.get("deployment_warnings") or []
+    if deployment_check.get("ai_mode") == "fallback":
+        st.info("AI fallback mode is active. Add your AI key to enable AI-powered responses.")
+    if warnings:
+        st.warning("Review the items below before deploying:")
+        for warning in warnings:
+            st.write(f"- {warning}")
+    else:
+        st.success("Deployment checks look good. You can test and deploy from here.")
 
-        st.markdown("---")
-        st.subheader("✅ Go-Live Checklist")
+    detected_country = sync_billing_country_from_backend()
+    country_label = "detected" if st.session_state.get("profile_country_source") == "auto" else "selected"
+    st.caption(f"Billing country ({country_label}): {detected_country}")
+    st.caption("You can override this in the Profile tab if the detected country is not correct.")
 
-        checklist_items = [
-            ("Strong `AUTH_SECRET`", deployment_check.get("auth_secret_ok"), "Set a non-default signing secret."),
-            ("Production `FRONTEND_APP_URL`", deployment_check.get("frontend_url_ok"), "Use your live dashboard URL."),
-            ("Production `DATABASE_URL`", deployment_check.get("database_url_ok"), "Point the app at your live database."),
-            ("Billing provider ready", deployment_check.get("billing_ready"), "At least one live billing rail must be enabled."),
-            ("Paystack live mode", deployment_check.get("paystack_ok"), "Use live Paystack keys for real monthly subscriptions."),
-            ("SMTP configured", deployment_check.get("smtp_ok"), "Password reset email needs working mail settings."),
-            ("AI enabled", deployment_check.get("ai_ready"), "AI is optional, but recommended for live replies."),
-            ("Uploads ready", deployment_check.get("upload_ready"), "Media uploads are already wired through the backend."),
-        ]
+    st.markdown("---")
+    st.subheader("✅ Go-Live Checklist")
 
-        for label, is_ready, hint in checklist_items:
-            badge_bg = "#dcfce7" if is_ready else "#fef3c7"
-            badge_fg = "#166534" if is_ready else "#92400e"
-            badge_border = "#86efac" if is_ready else "#fbbf24"
-            badge_label = "READY" if is_ready else "CHECK"
-            st.markdown(
-                dedent(
-                    f"""
-                    <div style="display:flex; align-items:flex-start; gap:12px; padding:12px 14px; margin-bottom:10px; border:1px solid {theme['border']}; border-radius:14px; background:{theme['card']};">
-                        <div style="flex:1 1 auto;">
-                            <div style="font-weight:700; color:{theme['text']}; margin-bottom:4px;">{label}</div>
-                            <div style="color:{theme['muted']}; font-size:0.9rem;">{hint}</div>
-                        </div>
-                        <div style="flex:0 0 auto; align-self:center; padding:6px 12px; border-radius:999px; background:{badge_bg}; color:{badge_fg}; border:1px solid {badge_border}; font-size:0.72rem; font-weight:800; letter-spacing:0.08em;">
-                            {badge_label}
-                        </div>
+    checklist_items = [
+        ("Strong `AUTH_SECRET`", deployment_check.get("auth_secret_ok"), "Set a non-default signing secret."),
+        ("Production `FRONTEND_APP_URL`", deployment_check.get("frontend_url_ok"), "Use your live dashboard URL."),
+        ("Production `DATABASE_URL`", deployment_check.get("database_url_ok"), "Point the app at your live database."),
+        ("Billing provider ready", deployment_check.get("billing_ready"), "At least one live billing rail must be enabled."),
+        ("Paystack live mode", deployment_check.get("paystack_ok"), "Use live Paystack keys for real monthly subscriptions."),
+        ("SMTP configured", deployment_check.get("smtp_ok"), "Password reset email needs working mail settings."),
+        ("AI enabled", deployment_check.get("ai_ready"), "AI is optional, but recommended for live replies."),
+        ("Uploads ready", deployment_check.get("upload_ready"), "Media uploads are already wired through the backend."),
+    ]
+
+    for label, is_ready, hint in checklist_items:
+        badge_bg = "#dcfce7" if is_ready else "#fef3c7"
+        badge_fg = "#166534" if is_ready else "#92400e"
+        badge_border = "#86efac" if is_ready else "#fbbf24"
+        badge_label = "READY" if is_ready else "CHECK"
+        st.markdown(
+            dedent(
+                f"""
+                <div style="display:flex; align-items:flex-start; gap:12px; padding:12px 14px; margin-bottom:10px; border:1px solid {theme['border']}; border-radius:14px; background:{theme['card']};">
+                    <div style="flex:1 1 auto;">
+                        <div style="font-weight:700; color:{theme['text']}; margin-bottom:4px;">{label}</div>
+                        <div style="color:{theme['muted']}; font-size:0.9rem;">{hint}</div>
                     </div>
-                    """
-                ),
+                    <div style="flex:0 0 auto; align-self:center; padding:6px 12px; border-radius:999px; background:{badge_bg}; color:{badge_fg}; border:1px solid {badge_border}; font-size:0.72rem; font-weight:800; letter-spacing:0.08em;">
+                        {badge_label}
+                    </div>
+                </div>
+                """
+            ),
                 unsafe_allow_html=True,
             )
 
@@ -5519,9 +5703,21 @@ def settings_page():
 # =============================================================================
 def billing_page():
     theme = get_theme_tokens()
+    if st.session_state.get("profile_country_source") != "manual":
+        sync_billing_country_from_backend()
     st.markdown(f"<h1 class='gradient-text'>💰 Billing & Subscription</h1>", unsafe_allow_html=True)
     st.markdown("---")
     billing_meta = api_get("/api/billing/plans") or {}
+    billing_country = get_billing_country()
+    paystack_supported_country = is_paystack_supported_country(billing_country)
+    paypal_live = bool(billing_meta.get("paypal_enabled"))
+    dodo_live = bool(billing_meta.get("dodo_enabled")) and (billing_meta.get("dodo_env") or "").strip().lower() == "live_mode"
+    paystack_live = billing_meta.get("paystack_env") == "live"
+
+    country_label = "detected" if st.session_state.get("profile_country_source") == "auto" else "selected"
+    st.caption(f"Billing country ({country_label}): {billing_country}")
+    if not paystack_supported_country:
+        st.info("Paystack is hidden for the selected billing country. PayPal and Dodo remain available when live.")
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -5538,17 +5734,17 @@ def billing_page():
     provider_cards = [
         (
             "PayPal",
-            bool(billing_meta.get("paypal_enabled")),
+            paypal_live,
             "Add `PAYPAL_CLIENT_SECRET` and keep `PAYPAL_ENV=live` on the backend host.",
         ),
         (
             "Paystack",
-            billing_meta.get("paystack_env") == "live",
-            "Use a live `sk_live_...` key on the backend host and restart the app.",
+            paystack_live and paystack_supported_country,
+            "Use a live `sk_live_...` key on the backend host and select a supported billing country.",
         ),
         (
             "Dodo",
-            bool(billing_meta.get("dodo_enabled")) and (billing_meta.get("dodo_env") or "").strip().lower() == "live_mode",
+            dodo_live,
             "Add `DODO_PAYMENTS_API_KEY`, keep `DODO_ENV=live_mode`, and restart the backend.",
         ),
     ]
@@ -5715,12 +5911,15 @@ def billing_page():
                 """,
                 unsafe_allow_html=True,
             )
-            if billing_meta.get("paystack_env") == "live":
+            if paystack_live and paystack_supported_country:
                 st.success("Paystack live subscription billing is configured.")
             else:
-                st.warning("Paystack is not live yet. Replace `PAYSTACK_SECRET_KEY` with a live `sk_live_...` key to enable real subscriptions.")
+                if not paystack_supported_country:
+                    st.info("Paystack subscriptions are not shown for this billing country.")
+                else:
+                    st.warning("Paystack is not live yet. Replace `PAYSTACK_SECRET_KEY` with a live `sk_live_...` key to enable real subscriptions.")
 
-            if st.button("Create Paystack Subscription", key="pay_paystack", type="primary", use_container_width=True):
+            if paystack_live and paystack_supported_country and st.button("Create Paystack Subscription", key="pay_paystack", type="primary", use_container_width=True):
                 plan_key = st.session_state.billing_info.get("plan_key") or ""
                 if not plan_key:
                     st.warning("Select a plan first.")
@@ -5742,6 +5941,9 @@ def billing_page():
                         st.markdown(f"[Open Paystack Subscription Checkout]({payment_data['payment_link']})")
                     else:
                         st.error(f"Could not create a live Paystack subscription checkout session: {payment_result.get('error', 'Unknown Paystack error')}")
+
+            if not paystack_supported_country:
+                st.caption("Choose a supported country in Settings to show the Paystack rail.")
 
             paystack_session_id = st.session_state.billing_info.get("paystack_session_id", "")
             if paystack_session_id and st.button("Refresh Paystack Status", key="refresh_paystack_status", use_container_width=True):
@@ -5920,9 +6122,9 @@ def documentation_page():
             language="text"
         )
 
-        st.markdown("""
+        st.markdown(f"""
         **Base URL**  
-        `http://localhost:8000`
+        `{BACKEND_DOC_URL}`
 
         **Common Endpoints**
         - `GET /health` to verify backend and database availability
