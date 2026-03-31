@@ -32,9 +32,10 @@ st.rerun = rerun_app
 # CONFIGURATION
 # =============================================================================
 APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_logo.svg"
+APP_FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_favicon.png"
 st.set_page_config(
     page_title="Social Ai Agent",
-    page_icon=str(APP_ICON_PATH),
+    page_icon=str(APP_FAVICON_PATH if APP_FAVICON_PATH.exists() else APP_ICON_PATH),
     layout="wide",
     initial_sidebar_state="expanded"
 )
