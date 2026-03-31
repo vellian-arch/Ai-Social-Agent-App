@@ -3051,6 +3051,7 @@ def apply_styling():
                 margin: 0 0 10px 0 !important;
                 border-radius: 14px !important;
                 gap: 10px !important;
+                justify-content: flex-start !important;
             }}
 
             .app-topbar-subtitle {{
@@ -3060,6 +3061,10 @@ def apply_styling():
             }}
 
             .app-topbar-meta {{
+                display: none !important;
+            }}
+
+            .app-topbar > div:last-child {{
                 display: none !important;
             }}
         }}
