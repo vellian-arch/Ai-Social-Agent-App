@@ -14,6 +14,20 @@ from textwrap import dedent
 from urllib.parse import urlencode
 from streamlit_option_menu import option_menu
 
+_STREAMLIT_RERUN = getattr(st, "rerun", None)
+_STREAMLIT_EXPERIMENTAL_RERUN = getattr(st, "experimental_rerun", None)
+
+
+def rerun_app():
+    if callable(_STREAMLIT_RERUN):
+        return _STREAMLIT_RERUN()
+    if callable(_STREAMLIT_EXPERIMENTAL_RERUN):
+        return _STREAMLIT_EXPERIMENTAL_RERUN()
+    raise RuntimeError("Streamlit rerun is not available in this environment.")
+
+
+st.rerun = rerun_app
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
