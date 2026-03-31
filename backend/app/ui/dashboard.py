@@ -12,7 +12,6 @@ import uuid
 from pathlib import Path
 from textwrap import dedent
 from urllib.parse import urlencode
-import streamlit.components.v1 as components
 from streamlit_option_menu import option_menu
 
 _STREAMLIT_RERUN = getattr(st, "rerun", None)
@@ -33,7 +32,7 @@ st.rerun = rerun_app
 # CONFIGURATION
 # =============================================================================
 APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_logo.svg"
-APP_FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_favicon.png"
+APP_FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_favicon_v2.png"
 st.set_page_config(
     page_title="Social Ai Agent",
     page_icon=str(APP_FAVICON_PATH if APP_FAVICON_PATH.exists() else APP_ICON_PATH),
@@ -1778,24 +1777,38 @@ def inject_favicon_override():
         favicon_bytes = APP_ICON_PATH.read_bytes()
     encoded = base64.b64encode(favicon_bytes).decode("utf-8")
     favicon_data_url = f"data:image/png;base64,{encoded}"
-    components.html(
+    st.markdown(
         f"""
+        <link rel="icon" type="image/png" href="{favicon_data_url}">
+        <link rel="shortcut icon" type="image/png" href="{favicon_data_url}">
         <script>
         (function() {{
-            var rels = ['icon', 'shortcut icon'];
-            rels.forEach(function(rel) {{
-                var link = document.querySelector("link[rel='" + rel + "']") || document.createElement('link');
-                link.rel = rel;
-                link.type = 'image/png';
-                link.href = '{favicon_data_url}';
-                if (!link.parentNode) {{
-                    document.head.appendChild(link);
+            function refreshFavicon() {{
+                var href = "{favicon_data_url}";
+                var links = document.querySelectorAll("link[rel='icon'], link[rel='shortcut icon']");
+                if (!links.length) {{
+                    ["icon", "shortcut icon"].forEach(function(rel) {{
+                        var link = document.createElement("link");
+                        link.rel = rel;
+                        link.type = "image/png";
+                        link.href = href;
+                        document.head.appendChild(link);
+                    }});
+                    return;
                 }}
-            }});
+                links.forEach(function(link) {{
+                    link.type = "image/png";
+                    link.href = href + "?v=" + Date.now();
+                }});
+            }}
+            refreshFavicon();
+            window.addEventListener("load", refreshFavicon);
+            setTimeout(refreshFavicon, 250);
+            setTimeout(refreshFavicon, 1000);
         }})();
         </script>
         """,
-        height=0,
+        unsafe_allow_html=True,
     )
 
 
