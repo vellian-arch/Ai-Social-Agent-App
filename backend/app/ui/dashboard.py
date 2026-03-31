@@ -650,7 +650,7 @@ def render_table_card(title, subtitle, dataframe, empty_text, height=320, column
                 st.session_state[state_key] = current_page + 1
                 st.rerun()
         dataframe = page_df
-    st.dataframe(dataframe, use_container_width=True, hide_index=True, height=height)
+    st.dataframe(dataframe, use_container_width=True, height=height)
 
 def enrich_product(product):
     enriched = dict(product)
@@ -6155,7 +6155,7 @@ def billing_page():
         "Status": ["Paid", "Paid", "Paid"],
         "Invoice": ["INV-001", "INV-002", "INV-003"]
     })
-    st.dataframe(history, use_container_width=True, hide_index=True)
+    st.dataframe(history, use_container_width=True)
 
 # =============================================================================
 # DOCUMENTATION PAGE
