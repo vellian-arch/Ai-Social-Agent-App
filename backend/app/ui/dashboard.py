@@ -1766,12 +1766,15 @@ def get_app_logo_html(size=56):
         return f'<div style="width:{size}px;height:{size}px;border-radius:{size // 4}px;background:linear-gradient(135deg,#0f172a,#1d4ed8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">SA</div>'
 
 
+APP_LOGO_SIZE = 40
+
+
 def render_app_topbar():
     st.markdown(
         f"""
         <div class='app-topbar' style='position:sticky; top:0; z-index:999; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; margin:0 0 14px 0; border:1px solid rgba(255,255,255,0.08); border-radius:16px; background:linear-gradient(135deg, rgba(18,28,48,0.94), rgba(14,20,35,0.98)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow:0 10px 22px rgba(0,0,0,0.14);'>
             <div style='display:flex; align-items:center; gap:10px; min-width:0;'>
-                <div style='flex:0 0 auto;'>{get_app_logo_html(34)}</div>
+                <div style='flex:0 0 auto;'>{get_app_logo_html(APP_LOGO_SIZE)}</div>
                 <div style='min-width:0;'>
                     <div class='app-topbar-subtitle' style='font-size:0.64rem; text-transform:uppercase; letter-spacing:0.16em; color:#8fb7e7; margin-bottom:2px;'>Social Commerce OS</div>
                     <div style='font-size:0.98rem; font-weight:800; color:#f8fafc; line-height:1.05;'>Social Ai Agent</div>
