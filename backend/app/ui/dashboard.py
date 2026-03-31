@@ -33,9 +33,13 @@ st.rerun = rerun_app
 # =============================================================================
 APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_logo.svg"
 APP_FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_favicon_v2.png"
+try:
+    APP_FAVICON_DATA_URL = f"data:image/png;base64,{base64.b64encode(APP_FAVICON_PATH.read_bytes()).decode('utf-8')}"
+except Exception:
+    APP_FAVICON_DATA_URL = None
 st.set_page_config(
     page_title="Social Ai Agent",
-    page_icon=str(APP_FAVICON_PATH if APP_FAVICON_PATH.exists() else APP_ICON_PATH),
+    page_icon=APP_FAVICON_DATA_URL or str(APP_FAVICON_PATH if APP_FAVICON_PATH.exists() else APP_ICON_PATH),
     layout="wide",
     initial_sidebar_state="expanded"
 )
