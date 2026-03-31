@@ -1769,7 +1769,7 @@ def get_app_logo_html(size=56):
 def render_app_topbar():
     st.markdown(
         f"""
-        <div style='display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; margin:0 0 14px 0; border:1px solid rgba(255,255,255,0.08); border-radius:16px; background:linear-gradient(135deg, rgba(18,28,48,0.92), rgba(14,20,35,0.95)); box-shadow:0 10px 22px rgba(0,0,0,0.14);'>
+        <div style='position:sticky; top:0; z-index:999; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; margin:0 0 14px 0; border:1px solid rgba(255,255,255,0.08); border-radius:16px; background:linear-gradient(135deg, rgba(18,28,48,0.94), rgba(14,20,35,0.98)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow:0 10px 22px rgba(0,0,0,0.14);'>
             <div style='display:flex; align-items:center; gap:10px; min-width:0;'>
                 <div style='flex:0 0 auto;'>{get_app_logo_html(34)}</div>
                 <div style='min-width:0;'>
