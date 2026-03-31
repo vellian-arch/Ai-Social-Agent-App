@@ -12,6 +12,7 @@ import uuid
 from pathlib import Path
 from textwrap import dedent
 from urllib.parse import urlencode
+import streamlit.components.v1 as components
 from streamlit_option_menu import option_menu
 
 _STREAMLIT_RERUN = getattr(st, "rerun", None)
@@ -1768,6 +1769,32 @@ def get_app_logo_html(size=56):
 
 
 APP_LOGO_SIZE = 40
+
+
+def inject_favicon_override():
+    try:
+        favicon_bytes = APP_FAVICON_PATH.read_bytes()
+    except Exception:
+        favicon_bytes = APP_ICON_PATH.read_bytes()
+    encoded = base64.b64encode(favicon_bytes).decode("utf-8")
+    favicon_data_url = f"data:image/png;base64,{encoded}"
+    components.html(
+        f"""
+        <script>
+        (function() {{
+            var link = document.querySelector("link[rel~='icon']");
+            if (!link) {{
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }}
+            link.type = 'image/png';
+            link.href = '{favicon_data_url}';
+        }})();
+        </script>
+        """,
+        height=0,
+    )
 
 
 def render_app_topbar():
@@ -6299,6 +6326,7 @@ def documentation_page():
 def main():
     ensure_session_state()
     apply_styling()
+    inject_favicon_override()
     render_app_topbar()
 
     if not st.session_state.logged_in:
