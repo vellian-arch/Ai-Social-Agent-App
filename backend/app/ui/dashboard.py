@@ -5999,7 +5999,7 @@ def billing_page():
 
     st.subheader("📋 Choose Your Platform Package")
     st.markdown("Select the platforms you want to connect. Price is based on the number of platforms.")
-    st.caption("Each plan is monthly. Choose the platform set you want, then complete payment to unlock the workspace.")
+    st.caption("Each plan is monthly. Pick a platform set, then complete payment to unlock the workspace.")
 
     def select_plan(label, platforms, plan_key):
         st.session_state.selected_platforms = platforms
@@ -6031,20 +6031,19 @@ def billing_page():
         for col, (label, price, features, platforms, popular, plan_key) in zip(row, plan_specs[chunk_start:chunk_start + 3]):
             with col:
                 highlight = theme["primary"] if popular else theme["border"]
-                badge_line = "<p style='margin:0 0 10px 0; color:{}; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; font-size:0.75rem;'>{}</p>".format(
+                badge_line = "<p style='margin:0 0 8px 0; color:{}; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; font-size:0.7rem;'>{}</p>".format(
                     theme["primary"], "Popular" if popular else "Plan"
                 )
                 feature_lines = "".join(
-                    f"<p style='margin:0 0 10px 0; color:{theme['text']};'>✓ {feature}</p>" for feature in features
+                    f"<p style='margin:0 0 7px 0; color:{theme['text']}; font-size:0.92rem;'>✓ {feature}</p>" for feature in features
                 )
                 card_html = dedent(
                     f"""
-                    <div class='billing-plan-card' style='border-color:{highlight};'>
+                    <div class='billing-plan-card' style='border-color:{highlight}; padding:16px 16px 14px 16px;'>
                         {badge_line}
-                        <h3 style='margin:0 0 10px 0; color:{theme["text"]};'>{label}</h3>
-                        <p style='margin:0; font-size:1.9rem; font-weight:800; color:{theme["primary"]};'>${price}</p>
-                        <p style='margin:8px 0 18px 0; color:{theme["muted"]};'>per month</p>
-                        <hr style='margin:16px 0;'>
+                        <h3 style='margin:0 0 8px 0; color:{theme["text"]}; font-size:1.1rem;'>{label}</h3>
+                        <p style='margin:0; font-size:1.6rem; font-weight:800; color:{theme["primary"]}; line-height:1;'>${price}</p>
+                        <p style='margin:6px 0 12px 0; color:{theme["muted"]}; font-size:0.85rem;'>monthly access</p>
                         {feature_lines}
                     </div>
                     """
@@ -6054,207 +6053,207 @@ def billing_page():
                     select_plan(label, platforms, plan_key)
     
     if st.session_state.selected_platforms:
-        st.markdown("---")
-        st.subheader("💳 Choose Billing Rail")
-        st.markdown(
-            f"<div class='billing-rail-card'><h4 style='margin:0; color:{theme['text']};'>Selected Platforms</h4></div>",
-            unsafe_allow_html=True,
-        )
-        selected_cols = st.columns(min(len(st.session_state.selected_platforms), 4))
-        for idx, platform in enumerate(st.session_state.selected_platforms):
-            with selected_cols[idx % len(selected_cols)]:
+        with st.expander("💳 Choose Billing Rail", expanded=True):
+            st.caption("Billing rails stay here so the plan cards remain the main focus above.")
+            st.markdown(
+                f"<div class='billing-rail-card'><h4 style='margin:0; color:{theme['text']};'>Selected Platforms</h4></div>",
+                unsafe_allow_html=True,
+            )
+            selected_cols = st.columns(min(len(st.session_state.selected_platforms), 4))
+            for idx, platform in enumerate(st.session_state.selected_platforms):
+                with selected_cols[idx % len(selected_cols)]:
+                    st.markdown(
+                        f"<div class='billing-pill'>{platform}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+            tab_pay1, tab_pay2, tab_pay3 = st.tabs(["PayPal", "Paystack", "Dodo"])
+
+            with tab_pay1:
                 st.markdown(
-                    f"<div class='billing-pill'>{platform}</div>",
+                    f"""
+                    <div class='billing-provider-head' style='display:flex; align-items:center; gap:12px; margin-bottom:12px;'>
+                        {get_payment_provider_logo_html("PayPal", 28)}
+                        <div>
+                            <div class='billing-provider-name' style='font-size:1.02rem; font-weight:700; color:{theme["text"]};'>PayPal</div>
+                            <div class='billing-provider-copy' style='font-size:0.86rem; color:{theme["muted"]};'>Checkout for customers who prefer PayPal.</div>
+                        </div>
+                    </div>
+                    """,
                     unsafe_allow_html=True,
                 )
-        
-        tab_pay1, tab_pay2, tab_pay3 = st.tabs(["PayPal", "Paystack", "Dodo"])
-
-        with tab_pay1:
-            st.markdown(
-                f"""
-                <div class='billing-provider-head' style='display:flex; align-items:center; gap:12px; margin-bottom:12px;'>
-                    {get_payment_provider_logo_html("PayPal", 28)}
-                    <div>
-                        <div class='billing-provider-name' style='font-size:1.05rem; font-weight:700; color:{theme["text"]};'>PayPal subscription</div>
-                        <div class='billing-provider-copy' style='font-size:0.88rem; color:{theme["muted"]};'>Monthly plan checkout for customers who prefer PayPal.</div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            if billing_meta.get("paypal_enabled"):
-                st.success("PayPal live subscription billing is configured.")
-            else:
-                st.warning("PayPal is not live yet. Make sure the backend host has `PAYPAL_CLIENT_SECRET` and `PAYPAL_ENV=live`, then restart the backend.")
-
-            if st.button("Create PayPal Subscription", key="pay_paypal", type="primary", use_container_width=True):
-                plan_key = st.session_state.billing_info.get("plan_key") or ""
-                if not plan_key:
-                    st.warning("Select a plan first.")
+                if billing_meta.get("paypal_enabled"):
+                    st.success("PayPal live billing is configured.")
                 else:
-                    payment_result = api_post_verbose(
-                        "/api/payments/paypal/create",
-                        {
-                            "plan_key": plan_key,
-                            "customer_name": st.session_state.user_name or st.session_state.profile_name or st.session_state.user_email,
-                        },
-                    )
-                    if payment_result.get("ok") and payment_result.get("data", {}).get("payment_link"):
-                        payment_data = payment_result["data"]
-                        st.session_state.billing_info["payment_method"] = "PayPal (live)"
-                        st.session_state.billing_info["paypal_order_id"] = payment_data.get("subscription_id", payment_data.get("order_id", ""))
-                        st.session_state.billing_info["paypal_payment_link"] = payment_data.get("payment_link", "")
-                        st.session_state.billing_info["status"] = "Pending Payment"
-                        st.success("Live PayPal subscription created. Open the approval link to complete checkout.")
-                        st.markdown(f"[Open PayPal Subscription Checkout]({payment_data['payment_link']})")
+                    st.warning("PayPal is not live yet. Add `PAYPAL_CLIENT_SECRET` and `PAYPAL_ENV=live` on the backend.")
+
+                if st.button("Create PayPal Subscription", key="pay_paypal", type="primary", use_container_width=True):
+                    plan_key = st.session_state.billing_info.get("plan_key") or ""
+                    if not plan_key:
+                        st.warning("Select a plan first.")
                     else:
-                        st.error(f"Could not create a live PayPal subscription: {payment_result.get('error', 'Unknown PayPal error')}")
-
-            paypal_order_id = st.session_state.billing_info.get("paypal_order_id", "")
-            if paypal_order_id and st.button("Refresh PayPal Status", key="refresh_paypal_status", use_container_width=True):
-                status_result = api_get(f"/api/payments/paypal/{paypal_order_id}")
-                if status_result:
-                    payment_status = (status_result.get("payment_status") or "").upper()
-                    if payment_status in {"ACTIVE", "APPROVED"}:
-                        st.session_state.billing_info["status"] = "Active"
-                        st.session_state.subscription_status = "active"
-                        st.session_state.billing_info["next_billing"] = (datetime.now().replace(day=1) + pd.DateOffset(months=1)).strftime("%Y-%m-%d")
-                        st.success("✅ PayPal subscription confirmed. Your monthly plan is now active.")
-                    else:
-                        st.info(f"Current payment status: {payment_status or 'CREATED'}")
-                else:
-                    st.warning("Unable to verify the PayPal order right now.")
-
-        with tab_pay2:
-            st.markdown(
-                f"""
-                <div class='billing-provider-head' style='display:flex; align-items:center; gap:12px; margin-bottom:12px;'>
-                    {get_payment_provider_logo_html("Paystack", 28)}
-                    <div>
-                        <div class='billing-provider-name' style='font-size:1.05rem; font-weight:700; color:{theme["text"]};'>Paystack subscription</div>
-                        <div class='billing-provider-copy' style='font-size:0.88rem; color:{theme["muted"]};'>Monthly plan checkout for African markets and card payments.</div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            if paystack_live and paystack_supported_country:
-                st.success("Paystack live subscription billing is configured.")
-            else:
-                if not paystack_supported_country:
-                    st.info("Paystack subscriptions are not shown for this billing country.")
-                else:
-                    st.warning("Paystack is not live yet. Replace `PAYSTACK_SECRET_KEY` with a live `sk_live_...` key to enable real subscriptions.")
-
-            if paystack_live and paystack_supported_country and st.button("Create Paystack Subscription", key="pay_paystack", type="primary", use_container_width=True):
-                plan_key = st.session_state.billing_info.get("plan_key") or ""
-                if not plan_key:
-                    st.warning("Select a plan first.")
-                else:
-                    payment_result = api_post_verbose(
-                        "/api/payments/paystack/create",
-                        {
-                            "plan_key": plan_key,
-                            "customer_name": st.session_state.user_name or st.session_state.profile_name or st.session_state.user_email,
-                        },
-                    )
-                    if payment_result.get("ok") and payment_result.get("data", {}).get("payment_link"):
-                        payment_data = payment_result["data"]
-                        st.session_state.billing_info["payment_method"] = "Paystack (live)"
-                        st.session_state.billing_info["paystack_session_id"] = payment_data.get("reference", payment_data.get("session_id", ""))
-                        st.session_state.billing_info["paystack_payment_link"] = payment_data.get("payment_link", "")
-                        st.session_state.billing_info["status"] = "Pending Payment"
-                        st.success("Live Paystack subscription checkout created. Open the checkout link to complete payment.")
-                        st.markdown(f"[Open Paystack Subscription Checkout]({payment_data['payment_link']})")
-                    else:
-                        st.error(f"Could not create a live Paystack subscription checkout session: {payment_result.get('error', 'Unknown Paystack error')}")
-
-            if not paystack_supported_country:
-                st.caption("Choose a supported country in Settings to show the Paystack rail.")
-
-            paystack_session_id = st.session_state.billing_info.get("paystack_session_id", "")
-            if paystack_session_id and st.button("Refresh Paystack Status", key="refresh_paystack_status", use_container_width=True):
-                status_result = api_get(f"/api/payments/paystack/{paystack_session_id}")
-                if status_result:
-                    payment_status = (status_result.get("payment_status") or "").lower()
-                    if payment_status == "success":
-                        st.session_state.billing_info["status"] = "Active"
-                        st.session_state.subscription_status = "active"
-                        st.session_state.billing_info["next_billing"] = (datetime.now().replace(day=1) + pd.DateOffset(months=1)).strftime("%Y-%m-%d")
-                        st.success("✅ Paystack subscription confirmed. Your monthly plan is now active.")
-                    else:
-                        st.info(f"Current payment status: {payment_status or 'pending'}")
-                else:
-                    st.warning("Unable to verify the Paystack checkout right now.")
-
-        with tab_pay3:
-            st.markdown(
-                f"""
-                <div class='billing-provider-head' style='display:flex; align-items:center; gap:12px; margin-bottom:12px;'>
-                    {get_payment_provider_logo_html("Dodo", 28)}
-                    <div>
-                        <div class='billing-provider-name' style='font-size:1.05rem; font-weight:700; color:{theme["text"]};'>Dodo subscription</div>
-                        <div class='billing-provider-copy' style='font-size:0.88rem; color:{theme["muted"]};'>Monthly checkout powered by Dodo Payments.</div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            if not st.session_state.billing_info.get("plan_key"):
-                st.info("Select a plan above first, then open the live Dodo subscription checkout.")
-            else:
-                plan_key = st.session_state.billing_info.get("plan_key")
-                if dodo_status := api_get("/api/billing/plans"):
-                    selected_plan = next((plan for plan in dodo_status.get("plans", []) if plan.get("plan_key") == plan_key), None)
-                else:
-                    selected_plan = None
-
-                if selected_plan:
-                    st.write(f"Selected plan: **{selected_plan['label']}**")
-                    st.write(f"Live price: **${selected_plan['price_cents'] / 100:.2f}**")
-                else:
-                    st.write(f"Selected plan key: **{plan_key}**")
-
-                if st.button("Create Dodo Subscription", key="create_dodo_checkout", type="primary", use_container_width=True):
-                    payment_result = api_post_verbose(
-                        "/api/payments/dodo/create",
-                        {
-                            "plan_key": plan_key,
-                            "customer_name": st.session_state.user_name or st.session_state.profile_name or st.session_state.user_email,
-                            "return_url": FRONTEND_APP_URL,
-                        },
-                    )
-                    if payment_result.get("ok") and payment_result.get("data", {}).get("payment_link"):
-                        payment_data = payment_result["data"]
-                        st.session_state.billing_info["payment_method"] = "Dodo Payments (live)"
-                        st.session_state.billing_info["dodo_payment_id"] = payment_data.get("subscription_id", payment_data.get("payment_id", ""))
-                        st.session_state.billing_info["dodo_payment_link"] = payment_data.get("payment_link", "")
-                        st.session_state.billing_info["status"] = "Pending Payment"
-                        st.success("Live subscription checkout created. Open the payment link to complete the purchase.")
-                        st.markdown(
-                            f"<a href='{payment_data['payment_link']}' target='_blank'>Open Dodo Subscription Checkout</a>",
-                            unsafe_allow_html=True,
+                        payment_result = api_post_verbose(
+                            "/api/payments/paypal/create",
+                            {
+                                "plan_key": plan_key,
+                                "customer_name": st.session_state.user_name or st.session_state.profile_name or st.session_state.user_email,
+                            },
                         )
-                    else:
-                        st.error(f"Could not create a Dodo subscription checkout link: {payment_result.get('error', 'Unknown Dodo error')}")
-
-                payment_id = st.session_state.billing_info.get("dodo_payment_id", "")
-                if payment_id:
-                    st.caption(f"Payment ID: {payment_id}")
-                    if st.button("Refresh Payment Status", key="refresh_dodo_status", use_container_width=True):
-                        status_result = api_get(f"/api/payments/dodo/{payment_id}")
-                        if status_result:
-                            payment_status = (status_result.get("payment_status") or "").lower()
-                            if payment_status in {"succeeded", "paid", "completed", "active"}:
-                                st.session_state.billing_info["status"] = "Active"
-                                st.session_state.subscription_status = "active"
-                                st.session_state.billing_info["next_billing"] = (datetime.now().replace(day=1) + pd.DateOffset(months=1)).strftime("%Y-%m-%d")
-                                st.success("✅ Dodo subscription confirmed. Your monthly plan is now active.")
-                            else:
-                                st.info(f"Current payment status: {payment_status or 'pending'}")
+                        if payment_result.get("ok") and payment_result.get("data", {}).get("payment_link"):
+                            payment_data = payment_result["data"]
+                            st.session_state.billing_info["payment_method"] = "PayPal (live)"
+                            st.session_state.billing_info["paypal_order_id"] = payment_data.get("subscription_id", payment_data.get("order_id", ""))
+                            st.session_state.billing_info["paypal_payment_link"] = payment_data.get("payment_link", "")
+                            st.session_state.billing_info["status"] = "Pending Payment"
+                            st.success("Live PayPal subscription created. Open the approval link to complete checkout.")
+                            st.markdown(f"[Open PayPal Subscription Checkout]({payment_data['payment_link']})")
                         else:
-                            st.warning("Unable to verify the payment status right now.")
+                            st.error(f"Could not create a live PayPal subscription: {payment_result.get('error', 'Unknown PayPal error')}")
+
+                paypal_order_id = st.session_state.billing_info.get("paypal_order_id", "")
+                if paypal_order_id and st.button("Refresh PayPal Status", key="refresh_paypal_status", use_container_width=True):
+                    status_result = api_get(f"/api/payments/paypal/{paypal_order_id}")
+                    if status_result:
+                        payment_status = (status_result.get("payment_status") or "").upper()
+                        if payment_status in {"ACTIVE", "APPROVED"}:
+                            st.session_state.billing_info["status"] = "Active"
+                            st.session_state.subscription_status = "active"
+                            st.session_state.billing_info["next_billing"] = (datetime.now().replace(day=1) + pd.DateOffset(months=1)).strftime("%Y-%m-%d")
+                            st.success("✅ PayPal subscription confirmed. Your monthly plan is now active.")
+                        else:
+                            st.info(f"Current payment status: {payment_status or 'CREATED'}")
+                    else:
+                        st.warning("Unable to verify the PayPal order right now.")
+
+            with tab_pay2:
+                st.markdown(
+                    f"""
+                    <div class='billing-provider-head' style='display:flex; align-items:center; gap:12px; margin-bottom:12px;'>
+                        {get_payment_provider_logo_html("Paystack", 28)}
+                        <div>
+                            <div class='billing-provider-name' style='font-size:1.02rem; font-weight:700; color:{theme["text"]};'>Paystack</div>
+                            <div class='billing-provider-copy' style='font-size:0.86rem; color:{theme["muted"]};'>Checkout for cards and supported African markets.</div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if paystack_live and paystack_supported_country:
+                    st.success("Paystack live billing is configured.")
+                else:
+                    if not paystack_supported_country:
+                        st.info("Paystack is hidden for this billing country.")
+                    else:
+                        st.warning("Paystack is not live yet. Replace `PAYSTACK_SECRET_KEY` with a live `sk_live_...` key.")
+
+                if paystack_live and paystack_supported_country and st.button("Create Paystack Subscription", key="pay_paystack", type="primary", use_container_width=True):
+                    plan_key = st.session_state.billing_info.get("plan_key") or ""
+                    if not plan_key:
+                        st.warning("Select a plan first.")
+                    else:
+                        payment_result = api_post_verbose(
+                            "/api/payments/paystack/create",
+                            {
+                                "plan_key": plan_key,
+                                "customer_name": st.session_state.user_name or st.session_state.profile_name or st.session_state.user_email,
+                            },
+                        )
+                        if payment_result.get("ok") and payment_result.get("data", {}).get("payment_link"):
+                            payment_data = payment_result["data"]
+                            st.session_state.billing_info["payment_method"] = "Paystack (live)"
+                            st.session_state.billing_info["paystack_session_id"] = payment_data.get("reference", payment_data.get("session_id", ""))
+                            st.session_state.billing_info["paystack_payment_link"] = payment_data.get("payment_link", "")
+                            st.session_state.billing_info["status"] = "Pending Payment"
+                            st.success("Live Paystack subscription checkout created. Open the checkout link to complete payment.")
+                            st.markdown(f"[Open Paystack Subscription Checkout]({payment_data['payment_link']})")
+                        else:
+                            st.error(f"Could not create a live Paystack subscription checkout session: {payment_result.get('error', 'Unknown Paystack error')}")
+
+                if not paystack_supported_country:
+                    st.caption("Choose a supported country in Settings to show the Paystack rail.")
+
+                paystack_session_id = st.session_state.billing_info.get("paystack_session_id", "")
+                if paystack_session_id and st.button("Refresh Paystack Status", key="refresh_paystack_status", use_container_width=True):
+                    status_result = api_get(f"/api/payments/paystack/{paystack_session_id}")
+                    if status_result:
+                        payment_status = (status_result.get("payment_status") or "").lower()
+                        if payment_status == "success":
+                            st.session_state.billing_info["status"] = "Active"
+                            st.session_state.subscription_status = "active"
+                            st.session_state.billing_info["next_billing"] = (datetime.now().replace(day=1) + pd.DateOffset(months=1)).strftime("%Y-%m-%d")
+                            st.success("✅ Paystack subscription confirmed. Your monthly plan is now active.")
+                        else:
+                            st.info(f"Current payment status: {payment_status or 'pending'}")
+                    else:
+                        st.warning("Unable to verify the Paystack checkout right now.")
+
+            with tab_pay3:
+                st.markdown(
+                    f"""
+                    <div class='billing-provider-head' style='display:flex; align-items:center; gap:12px; margin-bottom:12px;'>
+                        {get_payment_provider_logo_html("Dodo", 28)}
+                        <div>
+                            <div class='billing-provider-name' style='font-size:1.02rem; font-weight:700; color:{theme["text"]};'>Dodo</div>
+                            <div class='billing-provider-copy' style='font-size:0.86rem; color:{theme["muted"]};'>Monthly checkout powered by Dodo Payments.</div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if not st.session_state.billing_info.get("plan_key"):
+                    st.info("Select a plan above first, then open the live Dodo subscription checkout.")
+                else:
+                    plan_key = st.session_state.billing_info.get("plan_key")
+                    if dodo_status := api_get("/api/billing/plans"):
+                        selected_plan = next((plan for plan in dodo_status.get("plans", []) if plan.get("plan_key") == plan_key), None)
+                    else:
+                        selected_plan = None
+
+                    if selected_plan:
+                        st.write(f"Selected plan: **{selected_plan['label']}**")
+                        st.write(f"Live price: **${selected_plan['price_cents'] / 100:.2f}**")
+                    else:
+                        st.write(f"Selected plan key: **{plan_key}**")
+
+                    if st.button("Create Dodo Subscription", key="create_dodo_checkout", type="primary", use_container_width=True):
+                        payment_result = api_post_verbose(
+                            "/api/payments/dodo/create",
+                            {
+                                "plan_key": plan_key,
+                                "customer_name": st.session_state.user_name or st.session_state.profile_name or st.session_state.user_email,
+                                "return_url": FRONTEND_APP_URL,
+                            },
+                        )
+                        if payment_result.get("ok") and payment_result.get("data", {}).get("payment_link"):
+                            payment_data = payment_result["data"]
+                            st.session_state.billing_info["payment_method"] = "Dodo Payments (live)"
+                            st.session_state.billing_info["dodo_payment_id"] = payment_data.get("subscription_id", payment_data.get("payment_id", ""))
+                            st.session_state.billing_info["dodo_payment_link"] = payment_data.get("payment_link", "")
+                            st.session_state.billing_info["status"] = "Pending Payment"
+                            st.success("Live subscription checkout created. Open the payment link to complete the purchase.")
+                            st.markdown(
+                                f"<a href='{payment_data['payment_link']}' target='_blank'>Open Dodo Subscription Checkout</a>",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.error(f"Could not create a Dodo subscription checkout link: {payment_result.get('error', 'Unknown Dodo error')}")
+
+                    payment_id = st.session_state.billing_info.get("dodo_payment_id", "")
+                    if payment_id:
+                        st.caption(f"Payment ID: {payment_id}")
+                        if st.button("Refresh Payment Status", key="refresh_dodo_status", use_container_width=True):
+                            status_result = api_get(f"/api/payments/dodo/{payment_id}")
+                            if status_result:
+                                payment_status = (status_result.get("payment_status") or "").lower()
+                                if payment_status in {"succeeded", "paid", "completed", "active"}:
+                                    st.session_state.billing_info["status"] = "Active"
+                                    st.session_state.subscription_status = "active"
+                                    st.session_state.billing_info["next_billing"] = (datetime.now().replace(day=1) + pd.DateOffset(months=1)).strftime("%Y-%m-%d")
+                                    st.success("✅ Dodo subscription confirmed. Your monthly plan is now active.")
+                                else:
+                                    st.info(f"Current payment status: {payment_status or 'pending'}")
+                            else:
+                                st.warning("Unable to verify the payment status right now.")
 
     with st.expander("📄 Subscription history", expanded=False):
         st.caption("Past billing activity lives here, but it stays tucked away so the plan selector remains the main focus.")
