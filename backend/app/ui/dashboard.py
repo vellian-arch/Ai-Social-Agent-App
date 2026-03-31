@@ -1772,7 +1772,7 @@ APP_LOGO_SIZE = 40
 def render_app_topbar():
     st.markdown(
         f"""
-        <div class='app-topbar' style='position:sticky; top:0; z-index:999; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; margin:0 0 14px 0; border:1px solid rgba(255,255,255,0.08); border-radius:16px; background:linear-gradient(135deg, rgba(18,28,48,0.94), rgba(14,20,35,0.98)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow:0 10px 22px rgba(0,0,0,0.14);'>
+        <div class='app-topbar' style='position:sticky; top:0; z-index:999; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; margin:0 0 12px 0; border:1px solid rgba(255,255,255,0.08); border-radius:14px; background:linear-gradient(135deg, rgba(18,28,48,0.94), rgba(14,20,35,0.98)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow:0 8px 18px rgba(0,0,0,0.12);'>
             <div style='display:flex; align-items:center; gap:10px; min-width:0;'>
                 <div style='flex:0 0 auto;'>{get_app_logo_html(APP_LOGO_SIZE)}</div>
                 <div style='min-width:0;'>
