@@ -5898,12 +5898,13 @@ def billing_page():
     theme = get_theme_tokens()
     if st.session_state.get("profile_country_source") != "manual":
         sync_billing_country_from_backend()
-    st.markdown(f"<h1 class='gradient-text'>💰 Billing & Subscription</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 class='gradient-text'>💰 Monthly Access</h1>", unsafe_allow_html=True)
     st.markdown("---")
     st.markdown(
         f"""
         <div class='landing-panel' style='margin-bottom:18px;'>
-            <p style='margin:0 0 10px 0; color:{theme["muted"]}; text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem;'>What you get inside the app</p>
+            <p style='margin:0 0 10px 0; color:{theme["muted"]}; text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem;'>Feature tour first</p>
+            <p style='margin:0 0 12px 0; color:{theme["muted"]}; line-height:1.6;'>Take a quick look at the workspace features below. Billing is the final step that activates platform connections and monthly access.</p>
             <div class='landing-grid-three' style='margin-top:0;'>
                 <div class='landing-feature'>
                     <h3 style='margin-top:0;'>Unified inbox</h3>
@@ -5955,47 +5956,46 @@ def billing_page():
         platforms_count = len(st.session_state.billing_info["platforms"])
         st.metric("Platforms", f"{platforms_count}/6", f"${PLATFORM_PRICES.get(platforms_count, 0)}/mo")
     
-    st.markdown("---")
-    st.subheader("Provider Readiness")
-
-    provider_cards = [
-        (
-            "PayPal",
-            paypal_live,
-            "Add `PAYPAL_CLIENT_SECRET` and keep `PAYPAL_ENV=live` on the backend host.",
-        ),
-        (
-            "Paystack",
-            paystack_live and paystack_supported_country,
-            "Use a live `sk_live_...` key on the backend host and select a supported billing country.",
-        ),
-        (
-            "Dodo",
-            dodo_live,
-            "Add `DODO_PAYMENTS_API_KEY`, keep `DODO_ENV=live_mode`, and restart the backend.",
-        ),
-    ]
-    provider_cols = st.columns(3)
-    for col, (label, ready, hint) in zip(provider_cols, provider_cards):
-        with col:
-            badge_bg = "#dcfce7" if ready else "#fef3c7"
-            badge_fg = "#166534" if ready else "#92400e"
-            badge_border = "#86efac" if ready else "#fbbf24"
-            badge_label = "READY" if ready else "CHECK"
-            st.markdown(
-                dedent(
-                    f"""
-                    <div style="padding:14px 16px; border:1px solid {theme['border']}; border-radius:16px; background:{theme['card']}; min-height:140px;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
-                            <div style="font-size:1rem; font-weight:800; color:{theme['text']};">{label}</div>
-                            <div style="padding:6px 12px; border-radius:999px; background:{badge_bg}; color:{badge_fg}; border:1px solid {badge_border}; font-size:0.72rem; font-weight:800; letter-spacing:0.08em;">{badge_label}</div>
+    with st.expander("Provider readiness", expanded=False):
+        st.caption("This section only helps you verify live payment rails. It does not need to dominate the page.")
+        provider_cards = [
+            (
+                "PayPal",
+                paypal_live,
+                "Add `PAYPAL_CLIENT_SECRET` and keep `PAYPAL_ENV=live` on the backend host.",
+            ),
+            (
+                "Paystack",
+                paystack_live and paystack_supported_country,
+                "Use a live `sk_live_...` key on the backend host and select a supported billing country.",
+            ),
+            (
+                "Dodo",
+                dodo_live,
+                "Add `DODO_PAYMENTS_API_KEY`, keep `DODO_ENV=live_mode`, and restart the backend.",
+            ),
+        ]
+        provider_cols = st.columns(3)
+        for col, (label, ready, hint) in zip(provider_cols, provider_cards):
+            with col:
+                badge_bg = "#dcfce7" if ready else "#fef3c7"
+                badge_fg = "#166534" if ready else "#92400e"
+                badge_border = "#86efac" if ready else "#fbbf24"
+                badge_label = "READY" if ready else "CHECK"
+                st.markdown(
+                    dedent(
+                        f"""
+                        <div style="padding:14px 16px; border:1px solid {theme['border']}; border-radius:16px; background:{theme['card']}; min-height:140px;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
+                                <div style="font-size:1rem; font-weight:800; color:{theme['text']};">{label}</div>
+                                <div style="padding:6px 12px; border-radius:999px; background:{badge_bg}; color:{badge_fg}; border:1px solid {badge_border}; font-size:0.72rem; font-weight:800; letter-spacing:0.08em;">{badge_label}</div>
+                            </div>
+                            <div style="color:{theme['muted']}; font-size:0.9rem; line-height:1.55;">{hint}</div>
                         </div>
-                        <div style="color:{theme['muted']}; font-size:0.9rem; line-height:1.55;">{hint}</div>
-                    </div>
-                    """
-                ),
-                unsafe_allow_html=True,
-            )
+                        """
+                    ),
+                    unsafe_allow_html=True,
+                )
 
     st.subheader("📋 Choose Your Platform Package")
     st.markdown("Select the platforms you want to connect. Price is based on the number of platforms.")
@@ -6256,17 +6256,16 @@ def billing_page():
                         else:
                             st.warning("Unable to verify the payment status right now.")
 
-    st.markdown("---")
-    st.subheader("📄 Subscription History")
-    
-    history = pd.DataFrame({
-        "Date": ["Mar 1, 2024", "Feb 1, 2024", "Jan 1, 2024"],
-        "Description": ["Professional Plan - Monthly", "Professional Plan - Monthly", "Professional Plan - Monthly"],
-        "Amount": ["$99.00", "$99.00", "$99.00"],
-        "Status": ["Paid", "Paid", "Paid"],
-        "Invoice": ["INV-001", "INV-002", "INV-003"]
-    })
-    st.dataframe(history, use_container_width=True)
+    with st.expander("📄 Subscription history", expanded=False):
+        st.caption("Past billing activity lives here, but it stays tucked away so the plan selector remains the main focus.")
+        history = pd.DataFrame({
+            "Date": ["Mar 1, 2024", "Feb 1, 2024", "Jan 1, 2024"],
+            "Description": ["Professional Plan - Monthly", "Professional Plan - Monthly", "Professional Plan - Monthly"],
+            "Amount": ["$99.00", "$99.00", "$99.00"],
+            "Status": ["Paid", "Paid", "Paid"],
+            "Invoice": ["INV-001", "INV-002", "INV-003"]
+        })
+        st.dataframe(history, use_container_width=True)
 
 # =============================================================================
 # DOCUMENTATION PAGE
