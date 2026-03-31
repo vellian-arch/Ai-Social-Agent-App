@@ -5824,6 +5824,40 @@ def billing_page():
         sync_billing_country_from_backend()
     st.markdown(f"<h1 class='gradient-text'>💰 Billing & Subscription</h1>", unsafe_allow_html=True)
     st.markdown("---")
+    st.markdown(
+        f"""
+        <div class='landing-panel' style='margin-bottom:18px;'>
+            <p style='margin:0 0 10px 0; color:{theme["muted"]}; text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem;'>What you get inside the app</p>
+            <div class='landing-grid-three' style='margin-top:0;'>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Unified inbox</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Manage comments, DMs, and replies from one workspace across supported channels.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>AI replies</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Use AI-assisted responses to keep buyers moving without losing conversation context.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Media and product memory</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Upload product media, track product context, and reuse selling information quickly.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Lead tracking</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Capture buyer interest, keep notes, and follow the lead pipeline through the app.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Monthly billing</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Unlock the workspace with a monthly subscription and keep your account active.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Platform connections</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Connect supported platforms after billing is active and start syncing conversations.</p>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     billing_meta = api_get("/api/billing/plans") or {}
     billing_country = get_billing_country()
     paystack_supported_country = is_paystack_supported_country(billing_country)
@@ -5889,6 +5923,7 @@ def billing_page():
 
     st.subheader("📋 Choose Your Platform Package")
     st.markdown("Select the platforms you want to connect. Price is based on the number of platforms.")
+    st.caption("Each plan is monthly. Choose the platform set you want, then complete payment to unlock the workspace.")
 
     def select_plan(label, platforms, plan_key):
         st.session_state.selected_platforms = platforms
