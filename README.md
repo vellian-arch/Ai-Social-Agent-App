@@ -125,9 +125,17 @@ Use [streamlit_app.py](streamlit_app.py) as the app entrypoint.
 
 The root [requirements.txt](requirements.txt) points Streamlit Cloud at the backend requirements file.
 
-For production deployments, set `API_BASE_URL`, `BACKEND_PUBLIC_URL`, and `FRONTEND_APP_URL` to your hosted service URLs, not localhost.
+For production deployments, use:
 
-If you are using Streamlit Community Cloud, the dashboard URL should be set to `https://socialaiagent.streamlit.app`.
+```env
+API_BASE_URL=https://your-render-service.onrender.com
+BACKEND_PUBLIC_URL=https://your-render-service.onrender.com
+FRONTEND_APP_URL=https://socialaiagent.streamlit.app
+PAYSTACK_CALLBACK_URL=https://socialaiagent.streamlit.app
+PAYPAL_RETURN_URL=https://socialaiagent.streamlit.app
+PAYPAL_CANCEL_URL=https://socialaiagent.streamlit.app
+DODO_RETURN_URL=https://socialaiagent.streamlit.app
+```
 
 ## Security Notes
 
