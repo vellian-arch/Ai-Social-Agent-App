@@ -2815,7 +2815,9 @@ def apply_styling():
             border: 2px solid {border_color};
             border-radius: 18px;
             padding: 20px;
-            min-height: 320px;
+            min-height: 300px;
+            max-width: 290px;
+            margin: 0 auto;
             box-shadow: 0 16px 32px rgba(15,23,38,0.08);
             height: 100%;
         }}
@@ -3052,6 +3054,8 @@ def apply_styling():
 
             .billing-plan-card {{
                 min-height: auto;
+                max-width: 100%;
+                margin: 0;
             }}
 
             .billing-plan-card h3 {{
