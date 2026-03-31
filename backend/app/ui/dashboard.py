@@ -5339,6 +5339,21 @@ def seed_connected_platform(platform):
 # =============================================================================
 def connections_page():
     theme = get_theme_tokens()
+    subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
+    if subscription_status != "active":
+        st.markdown(
+            f"""
+            <div style='background:{theme["card"]}; border:1px solid {theme["border"]}; border-radius:18px; padding:18px; margin-bottom:18px;'>
+                <div style='font-size:1.02rem; font-weight:700; color:{theme["text"]}; margin-bottom:8px;'>Subscription required</div>
+                <div style='color:{theme["muted"]}; line-height:1.6; margin-bottom:12px;'>
+                    You need an active monthly subscription before connecting platforms. Open Billing to activate your plan first.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.button("Go to Billing", use_container_width=True, type="primary", on_click=lambda: st.session_state.__setitem__("current_page", "Billing"))
+        return
     load_platform_credentials_from_backend()
     backend_public_url = (os.getenv("BACKEND_PUBLIC_URL") or API_BASE_URL).rstrip("/")
     youtube_callback = f"{backend_public_url}/oauth/youtube/callback"

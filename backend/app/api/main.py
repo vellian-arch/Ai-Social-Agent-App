@@ -1578,6 +1578,7 @@ async def api_platform_connections(request: Request):
 async def save_platform_connection(platform: str, payload: dict[str, Any], request: Request):
     user = get_authenticated_user(request)
     user_email = user["email"]
+    require_active_subscription(user_email)
     try:
         update_platform_connection(user_email, platform, payload)
     except ValueError as exc:
@@ -1618,6 +1619,7 @@ async def disconnect_platform_connection(platform: str, request: Request):
 async def refresh_platform_connection(platform: str, request: Request):
     user = get_authenticated_user(request)
     user_email = user["email"]
+    require_active_subscription(user_email)
     platform_key = platform.lower()
     if platform_key == "youtube":
         await refresh_youtube_connection_for_user(user_email)
@@ -1634,6 +1636,7 @@ async def refresh_platform_connection(platform: str, request: Request):
 async def refresh_all_platform_connections(request: Request):
     user = get_authenticated_user(request)
     user_email = user["email"]
+    require_active_subscription(user_email)
     maintenance_result = await auto_refresh_user_tokens_if_needed(user_email)
     return {"status": "success", **maintenance_result}
 
