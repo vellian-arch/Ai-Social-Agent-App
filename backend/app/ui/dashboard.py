@@ -3966,6 +3966,74 @@ def render_subscription_banner(subscription_status: str) -> None:
         unsafe_allow_html=True,
     )
 
+
+def locked_overview_page():
+    theme = get_theme_tokens()
+    st.markdown(f"<h1 class='gradient-text'>🔓 Explore the App</h1>", unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class='landing-panel' style='margin-bottom:18px;'>
+            <p style='margin:0 0 10px 0; color:{theme["muted"]}; text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem;'>What you unlock with a monthly subscription</p>
+            <div class='landing-grid-three' style='margin-top:0;'>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Unified inbox</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Track comments and messages from supported channels in one workspace.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>AI replies</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Draft faster replies with AI while keeping conversation context intact.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Media and product memory</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Upload product media and reuse saved product context in replies.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Lead tracking</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Keep notes, follow up, and move leads through the pipeline.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Monthly billing</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Choose a monthly plan to activate the workspace.</p>
+                </div>
+                <div class='landing-feature'>
+                    <h3 style='margin-top:0;'>Platform connections</h3>
+                    <p style='color:{theme["muted"]}; margin-bottom:0;'>Connect supported platforms after your plan is active.</p>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([1.2, 1])
+    with left:
+        st.markdown(
+            f"""
+            <div class='landing-panel'>
+                <p style='margin:0 0 10px 0; color:{theme["muted"]}; text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem;'>Preview</p>
+                <p style='margin:0 0 8px 0; font-size:1.2rem; font-weight:700;'>Browse the product features first, then choose Billing when you’re ready.</p>
+                <p style='margin:0; color:{theme["muted"]};'>The workspace stays locked until a monthly plan is active, but you can still inspect what’s inside before subscribing.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with right:
+        st.markdown(
+            f"""
+            <div class='landing-panel' style='height:100%;'>
+                <p style='margin:0 0 10px 0; color:{theme["muted"]}; text-transform:uppercase; letter-spacing:0.12em; font-size:0.72rem;'>Next step</p>
+                <p style='margin:0 0 16px 0; font-size:1.05rem; font-weight:700;'>Activate a monthly plan to unlock connections, chat, media, and analytics.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("Go to Billing", use_container_width=True, type="primary"):
+            st.session_state.current_page = "Billing"
+            st.rerun()
+        if st.button("Read Docs", use_container_width=True):
+            st.session_state.current_page = "Docs"
+            st.rerun()
+
 # =============================================================================
 # DASHBOARD PAGE
 # =============================================================================
@@ -6390,9 +6458,6 @@ def main():
 
     subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
     render_subscription_banner(subscription_status)
-    if subscription_status != "active" and st.session_state.current_page not in {"Billing", "Docs"}:
-        st.session_state.current_page = "Billing"
-        st.info("A monthly subscription is required to unlock workspace features. Open Billing to activate your plan.")
 
     page_handlers = {
         "Dashboard": dashboard_page,
@@ -6409,7 +6474,7 @@ def main():
     }
 
     if subscription_status != "active" and st.session_state.current_page not in {"Billing", "Docs"}:
-        billing_page()
+        locked_overview_page()
     else:
         page_handlers.get(st.session_state.current_page, dashboard_page)()
 
