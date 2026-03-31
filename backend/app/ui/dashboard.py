@@ -3716,7 +3716,7 @@ def render_sidebar():
         st.markdown(
             f"""
             <div style='display:flex; align-items:center; gap:12px; padding:10px 4px 16px 4px;'>
-                <div style='flex:0 0 auto;'>{get_app_logo_html(56)}</div>
+                <div style='flex:0 0 auto;'>{get_app_logo_html(APP_LOGO_SIZE)}</div>
                 <div style='min-width:0;'>
                     <div style='font-size:0.75rem; text-transform:uppercase; letter-spacing:0.16em; color:{sidebar_muted}; margin-bottom:4px;'>Social Commerce OS</div>
                     <div style='font-size:1.1rem; font-weight:800; color:{sidebar_text}; line-height:1.1;'>Social Ai Agent</div>
