@@ -3364,6 +3364,7 @@ def landing_page():
                     </div>
                 </div>
                 <div>
+                    <div style='margin-bottom:16px;'>{get_app_logo_html(72)}</div>
                     <p style='text-transform:uppercase; letter-spacing:0.18em; font-size:0.72rem; color:{status_color}; margin:0 0 14px 0;'>
                         Social Ai Agent | Social Commerce Operating System
                     </p>
@@ -3555,6 +3556,7 @@ def login_screen():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
+        st.markdown(f"<div style='display:flex; justify-content:center; margin-bottom:16px;'>{get_app_logo_html(72)}</div>", unsafe_allow_html=True)
         st.markdown("<h1 style='text-align: center;' class='gradient-text'>Social Ai Agent</h1>", unsafe_allow_html=True)
         st.markdown(f"<p style='text-align: center; color: {theme['muted']};'>{t('version')} | Intelligent Social Media</p>", unsafe_allow_html=True)
         
