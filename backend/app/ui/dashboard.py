@@ -1769,15 +1769,15 @@ def get_app_logo_html(size=56):
 def render_app_topbar():
     st.markdown(
         f"""
-        <div style='display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 18px; margin:0 0 18px 0; border:1px solid rgba(255,255,255,0.08); border-radius:20px; background:linear-gradient(135deg, rgba(18,28,48,0.94), rgba(14,20,35,0.96)); box-shadow:0 12px 28px rgba(0,0,0,0.18);'>
-            <div style='display:flex; align-items:center; gap:14px; min-width:0;'>
-                <div style='flex:0 0 auto;'>{get_app_logo_html(42)}</div>
+        <div style='display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; margin:0 0 14px 0; border:1px solid rgba(255,255,255,0.08); border-radius:16px; background:linear-gradient(135deg, rgba(18,28,48,0.92), rgba(14,20,35,0.95)); box-shadow:0 10px 22px rgba(0,0,0,0.14);'>
+            <div style='display:flex; align-items:center; gap:10px; min-width:0;'>
+                <div style='flex:0 0 auto;'>{get_app_logo_html(34)}</div>
                 <div style='min-width:0;'>
-                    <div style='font-size:0.72rem; text-transform:uppercase; letter-spacing:0.18em; color:#8fb7e7; margin-bottom:4px;'>Social Commerce OS</div>
-                    <div style='font-size:1.05rem; font-weight:800; color:#f8fafc; line-height:1.1;'>Social Ai Agent</div>
+                    <div style='font-size:0.64rem; text-transform:uppercase; letter-spacing:0.16em; color:#8fb7e7; margin-bottom:2px;'>Social Commerce OS</div>
+                    <div style='font-size:0.98rem; font-weight:800; color:#f8fafc; line-height:1.05;'>Social Ai Agent</div>
                 </div>
             </div>
-            <div style='flex:0 0 auto; color:#9fb6d6; font-size:0.85rem;'>Unified inbox • AI replies • Monthly billing</div>
+            <div style='flex:0 0 auto; color:#9fb6d6; font-size:0.78rem;'>Unified inbox • AI replies • Monthly billing</div>
         </div>
         """,
         unsafe_allow_html=True,
