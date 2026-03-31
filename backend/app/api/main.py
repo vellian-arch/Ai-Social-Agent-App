@@ -134,9 +134,6 @@ def get_deployment_warnings() -> list[str]:
     if dodo_enabled() and os.getenv("DODO_ENV", "live_mode").strip().lower() != "live_mode":
         warnings.append("Dodo Payments is not in live mode. Confirm DODO_ENV and merchant live status before deployment.")
 
-    if not SMTP_HOST or not SMTP_USERNAME or not SMTP_PASSWORD or not SMTP_FROM_EMAIL:
-        warnings.append("SMTP is not fully configured. Password-reset email will stay disabled until mail settings are provided.")
-
     return warnings
 
 
