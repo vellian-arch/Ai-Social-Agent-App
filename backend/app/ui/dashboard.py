@@ -3950,15 +3950,15 @@ def render_subscription_banner(subscription_status: str) -> None:
     theme = get_theme_tokens()
     st.markdown(
         f"""
-        <div style='margin: 0 0 18px 0; padding: 16px 18px; border-radius: 18px; border: 1px solid {theme["border"]}; background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(121, 185, 242, 0.12));'>
+        <div style='margin: 0 0 18px 0; padding: 16px 18px; border-radius: 18px; border: 1px solid {theme["border"]}; background: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(121, 185, 242, 0.10));'>
             <div style='display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;'>
                 <div>
-                    <div style='font-size:0.82rem; text-transform:uppercase; letter-spacing:0.14em; color:{theme["muted"]}; font-weight:800;'>Subscription required</div>
-                    <div style='font-size:1rem; color:{theme["text"]}; font-weight:700; margin-top:4px;'>Your monthly plan is inactive, so the workspace is locked.</div>
-                    <div style='font-size:0.9rem; color:{theme["muted"]}; margin-top:6px;'>Open Billing to activate a subscription and unlock connections, media, chat, analytics, and onboarding.</div>
+                    <div style='font-size:0.82rem; text-transform:uppercase; letter-spacing:0.14em; color:{theme["muted"]}; font-weight:800;'>Preview mode</div>
+                    <div style='font-size:1rem; color:{theme["text"]}; font-weight:700; margin-top:4px;'>Explore the workspace first, then activate monthly billing when you are ready to connect platforms.</div>
+                    <div style='font-size:0.9rem; color:{theme["muted"]}; margin-top:6px;'>Connections and subscription checkout live in the Billing and Connections areas.</div>
                 </div>
                 <div style='font-size:0.85rem; font-weight:700; color:white; background:{theme["accent"]}; padding:10px 14px; border-radius:999px;'>
-                    Billing only
+                    Explore first
                 </div>
             </div>
         </div>
@@ -5455,16 +5455,24 @@ def connections_page():
         st.markdown(
             f"""
             <div style='background:{theme["card"]}; border:1px solid {theme["border"]}; border-radius:18px; padding:18px; margin-bottom:18px;'>
-                <div style='font-size:1.02rem; font-weight:700; color:{theme["text"]}; margin-bottom:8px;'>Subscription required</div>
+                <div style='font-size:0.82rem; text-transform:uppercase; letter-spacing:0.14em; color:{theme["muted"]}; font-weight:800; margin-bottom:8px;'>Connection preview</div>
+                <div style='font-size:1.02rem; font-weight:700; color:{theme["text"]}; margin-bottom:8px;'>You can inspect every platform connection before subscribing.</div>
                 <div style='color:{theme["muted"]}; line-height:1.6; margin-bottom:12px;'>
-                    You need an active monthly subscription before connecting platforms. Open Billing to activate your plan first.
+                    The connection cards, callback URLs, and required fields are visible now. When you try to save a platform profile, the app will prompt for the monthly plan first.
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        st.button("Go to Billing", use_container_width=True, type="primary", on_click=lambda: st.session_state.__setitem__("current_page", "Billing"))
-        return
+        preview_cols = st.columns(2)
+        with preview_cols[0]:
+            if st.button("Go to Billing", use_container_width=True, type="primary"):
+                st.session_state.current_page = "Billing"
+                st.rerun()
+        with preview_cols[1]:
+            if st.button("Read Docs", use_container_width=True):
+                st.session_state.current_page = "Docs"
+                st.rerun()
     load_platform_credentials_from_backend()
     backend_public_url = (os.getenv("BACKEND_PUBLIC_URL") or API_BASE_URL).rstrip("/")
     youtube_callback = f"{backend_public_url}/oauth/youtube/callback"
@@ -6457,7 +6465,8 @@ def main():
     render_sidebar()
 
     subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
-    render_subscription_banner(subscription_status)
+    if subscription_status != "active" and st.session_state.current_page in {"Connections", "Billing"}:
+        render_subscription_banner(subscription_status)
 
     page_handlers = {
         "Dashboard": dashboard_page,
@@ -6473,10 +6482,7 @@ def main():
         "Docs": documentation_page,
     }
 
-    if subscription_status != "active" and st.session_state.current_page not in {"Billing", "Docs"}:
-        locked_overview_page()
-    else:
-        page_handlers.get(st.session_state.current_page, dashboard_page)()
+    page_handlers.get(st.session_state.current_page, dashboard_page)()
 
 
 if __name__ == "__main__":
