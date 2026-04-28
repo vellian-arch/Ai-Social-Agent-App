@@ -5950,6 +5950,8 @@ def billing_page():
     st.caption(f"Billing country ({country_label}): {billing_country}")
     if not paystack_supported_country:
         st.info("Paystack is hidden for the selected billing country. PayPal and Dodo remain available when live.")
+    if not (paypal_live or paystack_live or dodo_live):
+        st.warning("No live billing provider is configured yet. Add PayPal, Paystack, or Dodo keys on the backend to activate monthly billing.")
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -6091,7 +6093,13 @@ def billing_page():
                 else:
                     st.warning("PayPal is not live yet. Add `PAYPAL_CLIENT_SECRET` and `PAYPAL_ENV=live` on the backend.")
 
-                if st.button("Create PayPal Subscription", key="pay_paypal", type="primary", use_container_width=True):
+                if st.button(
+                    "Create PayPal Subscription",
+                    key="pay_paypal",
+                    type="primary",
+                    use_container_width=True,
+                    disabled=not billing_meta.get("paypal_enabled"),
+                ):
                     plan_key = st.session_state.billing_info.get("plan_key") or ""
                     if not plan_key:
                         st.warning("Select a plan first.")
@@ -6150,9 +6158,17 @@ def billing_page():
                     else:
                         st.warning("Paystack is not live yet. Replace `PAYSTACK_SECRET_KEY` with a live `sk_live_...` key.")
 
-                if paystack_live and paystack_supported_country and st.button("Create Paystack Subscription", key="pay_paystack", type="primary", use_container_width=True):
+                if st.button(
+                    "Create Paystack Subscription",
+                    key="pay_paystack",
+                    type="primary",
+                    use_container_width=True,
+                    disabled=not (paystack_live and paystack_supported_country),
+                ):
                     plan_key = st.session_state.billing_info.get("plan_key") or ""
-                    if not plan_key:
+                    if not (paystack_live and paystack_supported_country):
+                        st.info("Paystack is not available yet for this environment.")
+                    elif not plan_key:
                         st.warning("Select a plan first.")
                     else:
                         payment_result = api_post_verbose(
@@ -6219,7 +6235,13 @@ def billing_page():
                     else:
                         st.write(f"Selected plan key: **{plan_key}**")
 
-                    if st.button("Create Dodo Subscription", key="create_dodo_checkout", type="primary", use_container_width=True):
+                    if st.button(
+                        "Create Dodo Subscription",
+                        key="create_dodo_checkout",
+                        type="primary",
+                        use_container_width=True,
+                        disabled=not dodo_live,
+                    ):
                         payment_result = api_post_verbose(
                             "/api/payments/dodo/create",
                             {
