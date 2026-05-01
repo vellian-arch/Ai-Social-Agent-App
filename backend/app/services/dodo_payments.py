@@ -230,6 +230,7 @@ def create_payment_for_plan(plan_key: str, user_email: str, customer_name: str =
     payload = {
         "customer_id": user_email,
         "product_id": product_id,
+        "quantity": 1,
         "payment_link": True,
         "return_url": return_url or DODO_RETURN_URL or "",
         "show_saved_payment_methods": True,
