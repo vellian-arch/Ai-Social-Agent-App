@@ -1,4 +1,4 @@
-from app.api.main import *  # noqa: F401,F403
+from app.api.main import app  # noqa: F401
 
 if __name__ == "__main__":
     import uvicorn
