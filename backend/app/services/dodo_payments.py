@@ -210,6 +210,17 @@ def _billing_payload(user_email: str) -> dict[str, Any]:
     }
 
 
+def _create_customer(user_email: str, customer_name: str = "") -> dict[str, Any]:
+    payload = {
+        "email": user_email,
+        "name": customer_name or user_email.split("@", 1)[0] or user_email,
+        "metadata": {
+            "source": "ai-social-agent",
+        },
+    }
+    return _request("POST", "/customers", json=payload)
+
+
 def create_payment_for_plan(plan_key: str, user_email: str, customer_name: str = "", return_url: str = "") -> dict[str, Any]:
     if not dodo_enabled():
         raise RuntimeError("Dodo Payments is not configured")
@@ -227,8 +238,14 @@ def create_payment_for_plan(plan_key: str, user_email: str, customer_name: str =
     if not product_id:
         raise RuntimeError(f"No Dodo product is configured for {plan.label}")
 
+    customer = _create_customer(user_email, customer_name)
+    customer_id = customer.get("customer_id") or user_email
+
     payload = {
-        "customer_id": user_email,
+        "billing": _billing_payload(user_email),
+        "customer": {
+            "customer_id": customer_id,
+        },
         "product_id": product_id,
         "quantity": 1,
         "payment_link": True,
