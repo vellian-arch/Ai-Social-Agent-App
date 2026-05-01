@@ -41,7 +41,7 @@ st.set_page_config(
 )
 
 # Backend API base URL
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://ai-social-agent-app.onrender.com")
 FRONTEND_APP_URL = os.getenv("FRONTEND_APP_URL", "http://localhost:8501")
 BACKEND_DOC_URL = API_BASE_URL if not API_BASE_URL.startswith(("http://localhost", "http://127.0.0.1")) else "Configured backend URL"
 UPLOADS_DIR = Path(__file__).resolve().parents[3] / "uploads"
@@ -504,9 +504,15 @@ def api_post(endpoint, data):
         if response.status_code == 200:
             st.session_state.api_cache = {}
             return response.json()
-        else:
-            return None
-    except:
+        try:
+            payload = response.json()
+            detail = payload.get("detail") or payload.get("message") or payload.get("error") or response.text
+        except Exception:
+            detail = response.text
+        st.session_state.last_api_error = detail
+        return None
+    except Exception as exc:
+        st.session_state.last_api_error = str(exc)
         return None
 
 def api_post_verbose(endpoint, data):
@@ -3407,7 +3413,12 @@ class DataManager:
 # =============================================================================
 def check_password(email, password):
     normalized_email = (email or "").strip().lower()
-    result = api_post("/api/auth/login", {"email": normalized_email, "password": password})
+    st.session_state.last_api_error = ""
+    result = api_post_verbose("/api/auth/login", {"email": normalized_email, "password": password})
+    if not result.get("ok"):
+        st.session_state.last_api_error = result.get("error", "Unable to reach the backend")
+        return False
+    result = result.get("data", {})
     if result and result.get("status") == "success":
         user = result.get("user", {})
         apply_login_state(
@@ -3694,7 +3705,10 @@ def login_screen():
                                 DataManager.add_notification(t('welcome_message', name=st.session_state.user_name), "success")
                                 st.rerun()
                             else:
-                                st.error(t('login_error'))
+                                if st.session_state.get("last_api_error"):
+                                    st.error(f"Login failed: {st.session_state.last_api_error}")
+                                else:
+                                    st.error(t('login_error'))
                         else:
                             st.warning("Enter email and password")
                 
