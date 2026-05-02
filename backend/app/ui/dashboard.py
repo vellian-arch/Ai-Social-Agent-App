@@ -33,12 +33,16 @@ st.rerun = rerun_app
 # =============================================================================
 APP_ICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_logo.svg"
 APP_FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "social_ai_agent_favicon_v3.ico"
-st.set_page_config(
-    page_title="Social Ai Agent",
-    page_icon=str(APP_FAVICON_PATH if APP_FAVICON_PATH.exists() else APP_ICON_PATH),
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+try:
+    st.set_page_config(
+        page_title="Social Ai Agent",
+        page_icon=str(APP_FAVICON_PATH if APP_FAVICON_PATH.exists() else APP_ICON_PATH),
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+except Exception:
+    # Streamlit allows page config to be set only once; the entrypoint owns it.
+    pass
 
 # Backend API base URL
 API_BASE_URL = os.getenv("API_BASE_URL", "https://ai-social-agent-app.onrender.com")
@@ -1773,37 +1777,41 @@ def get_app_logo_html(size=56):
         return f'<div style="width:{size}px;height:{size}px;border-radius:{size // 4}px;background:linear-gradient(135deg,#0f172a,#1d4ed8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;">SA</div>'
 
 
-APP_LOGO_SIZE = 40
+APP_LOGO_SIZE = 48
 
 
 def inject_favicon_override():
     try:
         favicon_bytes = APP_FAVICON_PATH.read_bytes()
+        favicon_mime = "image/x-icon"
     except Exception:
         favicon_bytes = APP_ICON_PATH.read_bytes()
+        favicon_mime = "image/svg+xml"
     encoded = base64.b64encode(favicon_bytes).decode("utf-8")
-    favicon_data_url = f"data:image/png;base64,{encoded}"
+    favicon_data_url = f"data:{favicon_mime};base64,{encoded}"
     st.markdown(
         f"""
-        <link rel="icon" type="image/png" href="{favicon_data_url}">
-        <link rel="shortcut icon" type="image/png" href="{favicon_data_url}">
+        <link rel="icon" type="{favicon_mime}" href="{favicon_data_url}">
+        <link rel="shortcut icon" type="{favicon_mime}" href="{favicon_data_url}">
         <script>
         (function() {{
+            var href = "{favicon_data_url}";
+            var type = "{favicon_mime}";
+
             function refreshFavicon() {{
-                var href = "{favicon_data_url}";
                 var links = document.querySelectorAll("link[rel='icon'], link[rel='shortcut icon']");
                 if (!links.length) {{
                     ["icon", "shortcut icon"].forEach(function(rel) {{
                         var link = document.createElement("link");
                         link.rel = rel;
-                        link.type = "image/png";
+                        link.type = type;
                         link.href = href;
                         document.head.appendChild(link);
                     }});
                     return;
                 }}
                 links.forEach(function(link) {{
-                    link.type = "image/png";
+                    link.type = type;
                     link.href = href + "?v=" + Date.now();
                 }});
             }}
@@ -1811,6 +1819,10 @@ def inject_favicon_override():
             window.addEventListener("load", refreshFavicon);
             setTimeout(refreshFavicon, 250);
             setTimeout(refreshFavicon, 1000);
+            var observer = new MutationObserver(function() {{
+                refreshFavicon();
+            }});
+            observer.observe(document.head, {{ childList: true, subtree: true }});
         }})();
         </script>
         """,
@@ -2374,6 +2386,14 @@ def apply_styling():
         [data-testid="stDecoration"] {{
             background: linear-gradient(90deg, {gradient_start}, {gradient_mid}) !important;
         }}
+
+        #MainMenu {{
+            visibility: hidden;
+        }}
+
+        footer {{
+            visibility: hidden;
+        }}
         
         /* Login container */
         .login-container {{
@@ -2534,21 +2554,21 @@ def apply_styling():
                 linear-gradient(135deg, {bg_color}, {card_alt});
             border: 1px solid {border_color};
             border-radius: 28px;
-            padding: 34px;
-            margin-bottom: 20px;
+            padding: 22px;
+            margin-bottom: 16px;
             box-shadow: 0 24px 60px rgba(3, 10, 18, 0.18);
         }}
 
         .landing-poster {{
             display: grid;
             grid-template-columns: 1.05fr 0.95fr;
-            gap: 28px;
+            gap: 18px;
             align-items: center;
         }}
 
         .landing-visual {{
             position: relative;
-            min-height: 340px;
+            min-height: 250px;
             border-radius: 28px;
             background: linear-gradient(135deg, rgba(255,255,255,0.88), {card_color});
             border: 1px solid {border_color};
@@ -2559,9 +2579,9 @@ def apply_styling():
         .landing-visual::before {{
             content: "";
             position: absolute;
-            inset: auto -60px -80px auto;
-            width: 220px;
-            height: 220px;
+            inset: auto -48px -56px auto;
+            width: 160px;
+            height: 160px;
             background: {gradient_start};
             clip-path: polygon(100% 0, 0 100%, 100% 100%);
             opacity: 0.95;
@@ -2570,10 +2590,10 @@ def apply_styling():
         .landing-visual::after {{
             content: "";
             position: absolute;
-            top: 34px;
-            left: 34px;
-            width: 70px;
-            height: 70px;
+            top: 22px;
+            left: 22px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             background: {gradient_end};
             opacity: 0.88;
@@ -2581,9 +2601,9 @@ def apply_styling():
 
         .landing-browser {{
             position: absolute;
-            left: 34px;
-            top: 58px;
-            width: 72%;
+            left: 22px;
+            top: 38px;
+            width: 66%;
             background: {card_color};
             border: 1px solid {border_color};
             border-radius: 18px;
@@ -2592,12 +2612,12 @@ def apply_styling():
         }}
 
         .landing-browser-bar {{
-            height: 34px;
+            height: 28px;
             background: linear-gradient(90deg, {gradient_end}, {gradient_end}bb);
             display: flex;
             align-items: center;
-            padding: 0 14px;
-            gap: 8px;
+            padding: 0 12px;
+            gap: 6px;
         }}
 
         .landing-browser-dot {{
@@ -2608,68 +2628,68 @@ def apply_styling():
         }}
 
         .landing-browser-body {{
-            padding: 20px;
+            padding: 14px;
             display: grid;
             grid-template-columns: 1.15fr 0.85fr;
-            gap: 18px;
+            gap: 12px;
             align-items: center;
         }}
 
         .landing-browser-copy h4 {{
             margin: 0 0 8px 0;
             color: {text_color};
-            font-size: 1.2rem !important;
+            font-size: 1rem !important;
         }}
 
         .landing-browser-copy p {{
             margin: 0 0 10px 0;
             color: {secondary_color};
-            font-size: 0.8rem !important;
+            font-size: 0.75rem !important;
         }}
 
         .landing-browser-cta {{
             display: inline-flex;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 999px;
             background: {gradient_end};
             color: white;
             font-weight: 700;
-            font-size: 0.78rem;
+            font-size: 0.72rem;
         }}
 
         .landing-figure {{
             position: relative;
-            min-height: 180px;
+            min-height: 132px;
             border-radius: 18px;
             background: linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
         }}
 
         .landing-figure-head {{
             position: absolute;
-            top: 16px;
-            left: 46px;
-            width: 62px;
-            height: 62px;
+            top: 12px;
+            left: 30px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             background: #ffb4be;
         }}
 
         .landing-figure-body {{
             position: absolute;
-            left: 18px;
-            top: 70px;
-            width: 122px;
-            height: 92px;
-            border-radius: 26px 26px 18px 18px;
+            left: 12px;
+            top: 52px;
+            width: 88px;
+            height: 66px;
+            border-radius: 20px 20px 14px 14px;
             background: linear-gradient(135deg, {gradient_mid}, {gradient_start});
         }}
 
         .landing-figure-card {{
             position: absolute;
-            right: 6px;
-            top: 42px;
-            width: 96px;
-            height: 112px;
+            right: 4px;
+            top: 28px;
+            width: 72px;
+            height: 84px;
             border-radius: 18px;
             background: {video_bg};
             border: 1px solid {border_color};
@@ -2678,10 +2698,10 @@ def apply_styling():
         .landing-figure-card::before {{
             content: "";
             position: absolute;
-            top: 14px;
-            left: 14px;
-            width: 54px;
-            height: 10px;
+            top: 10px;
+            left: 10px;
+            width: 42px;
+            height: 8px;
             border-radius: 999px;
             background: {gradient_start};
         }}
@@ -2689,11 +2709,11 @@ def apply_styling():
         .landing-figure-card::after {{
             content: "";
             position: absolute;
-            top: 38px;
-            left: 14px;
-            width: 64px;
-            height: 48px;
-            border-radius: 14px;
+            top: 28px;
+            left: 10px;
+            width: 48px;
+            height: 34px;
+            border-radius: 12px;
             background: rgba(255,255,255,0.62);
         }}
 
@@ -2733,10 +2753,10 @@ def apply_styling():
         .landing-split-row {{
             display: flex;
             justify-content: space-between;
-            gap: 24px;
+            gap: 18px;
             align-items: flex-start;
             flex-wrap: wrap;
-            margin-top: 24px;
+            margin-top: 14px;
         }}
 
         .landing-panel {{
@@ -3031,6 +3051,32 @@ def apply_styling():
             .landing-mini,
             .landing-compact-meta {{
                 grid-template-columns: 1fr;
+            }}
+
+            .landing-browser,
+            .landing-visual {{
+                min-height: 180px;
+            }}
+
+            .landing-figure {{
+                min-height: 96px;
+            }}
+
+            .landing-figure-head {{
+                width: 34px;
+                height: 34px;
+            }}
+
+            .landing-figure-body {{
+                top: 44px;
+                width: 68px;
+                height: 52px;
+            }}
+
+            .landing-figure-card {{
+                top: 22px;
+                width: 54px;
+                height: 64px;
             }}
 
             .stTabs [data-baseweb="tab-list"] {{
@@ -3465,7 +3511,12 @@ def landing_page():
                     </div>
                 </div>
                 <div>
-                    <div style='margin-bottom:16px;'>{get_app_logo_html(72)}</div>
+                    <div style='display:flex; align-items:center; gap:12px; margin-bottom:16px;'>
+                        <div style='flex:0 0 auto;'>{get_app_logo_html(72)}</div>
+                        <div style='padding:8px 12px; border:1px solid {border_color}; border-radius:999px; background:rgba(255,255,255,0.04); color:{theme["muted"]}; font-size:0.72rem; font-weight:800; letter-spacing:0.16em; text-transform:uppercase;'>
+                            Social Ai Agent
+                        </div>
+                    </div>
                     <p style='text-transform:uppercase; letter-spacing:0.18em; font-size:0.72rem; color:{status_color}; margin:0 0 14px 0;'>
                         Social Ai Agent | Social Commerce Operating System
                     </p>
