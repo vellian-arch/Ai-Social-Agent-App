@@ -3482,6 +3482,7 @@ def check_password(email, password):
 # =============================================================================
 def landing_page():
     theme = get_theme_tokens()
+    border_color = theme["border"]
     status_label, health_data = get_backend_status()
     status_color = "#22c55e" if status_label == "Online" else theme["secondary"]
 
