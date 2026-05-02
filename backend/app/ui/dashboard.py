@@ -1793,38 +1793,6 @@ def inject_favicon_override():
         f"""
         <link rel="icon" type="{favicon_mime}" href="{favicon_data_url}">
         <link rel="shortcut icon" type="{favicon_mime}" href="{favicon_data_url}">
-        <script>
-        (function() {{
-            var href = "{favicon_data_url}";
-            var type = "{favicon_mime}";
-
-            function refreshFavicon() {{
-                var links = document.querySelectorAll("link[rel='icon'], link[rel='shortcut icon']");
-                if (!links.length) {{
-                    ["icon", "shortcut icon"].forEach(function(rel) {{
-                        var link = document.createElement("link");
-                        link.rel = rel;
-                        link.type = type;
-                        link.href = href;
-                        document.head.appendChild(link);
-                    }});
-                    return;
-                }}
-                links.forEach(function(link) {{
-                    link.type = type;
-                    link.href = href + "?v=" + Date.now();
-                }});
-            }}
-            refreshFavicon();
-            window.addEventListener("load", refreshFavicon);
-            setTimeout(refreshFavicon, 250);
-            setTimeout(refreshFavicon, 1000);
-            var observer = new MutationObserver(function() {{
-                refreshFavicon();
-            }});
-            observer.observe(document.head, {{ childList: true, subtree: true }});
-        }})();
-        </script>
         """,
         unsafe_allow_html=True,
     )
@@ -3485,6 +3453,13 @@ def landing_page():
     border_color = theme["border"]
     status_label, health_data = get_backend_status()
     status_color = "#22c55e" if status_label == "Online" else theme["secondary"]
+    try:
+        landing_logo_html = get_app_logo_html(72)
+    except Exception:
+        landing_logo_html = (
+            "<div style='width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#0f172a,#1d4ed8);"
+            "display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.1rem;'>SA</div>"
+        )
 
     st.markdown(
         f"""
@@ -3513,7 +3488,7 @@ def landing_page():
                 </div>
                 <div>
                     <div style='display:flex; align-items:center; gap:12px; margin-bottom:16px;'>
-                        <div style='flex:0 0 auto;'>{get_app_logo_html(72)}</div>
+                        <div style='flex:0 0 auto;'>{landing_logo_html}</div>
                         <div style='padding:8px 12px; border:1px solid {border_color}; border-radius:999px; background:rgba(255,255,255,0.04); color:{theme["muted"]}; font-size:0.72rem; font-weight:800; letter-spacing:0.16em; text-transform:uppercase;'>
                             Social Ai Agent
                         </div>
