@@ -1571,6 +1571,15 @@ async def api_platform_connections(request: Request):
     return {"connections": settings}
 
 
+@app.post("/api/platform-connections/refresh-all")
+async def refresh_all_platform_connections(request: Request):
+    user = get_authenticated_user(request)
+    user_email = user["email"]
+    require_active_subscription(user_email)
+    maintenance_result = await auto_refresh_user_tokens_if_needed(user_email)
+    return {"status": "success", **maintenance_result}
+
+
 @app.post("/api/platform-connections/{platform}")
 async def save_platform_connection(platform: str, payload: dict[str, Any], request: Request):
     user = get_authenticated_user(request)
@@ -1627,15 +1636,6 @@ async def refresh_platform_connection(platform: str, request: Request):
         return {"status": "success", "platform": "TikTok"}
 
     raise HTTPException(status_code=400, detail=f"Token refresh is not implemented for {platform}")
-
-
-@app.post("/api/platform-connections/refresh-all")
-async def refresh_all_platform_connections(request: Request):
-    user = get_authenticated_user(request)
-    user_email = user["email"]
-    require_active_subscription(user_email)
-    maintenance_result = await auto_refresh_user_tokens_if_needed(user_email)
-    return {"status": "success", **maintenance_result}
 
 
 @app.get("/api/conversations/{platform}")
@@ -1857,14 +1857,14 @@ async def handle_meta_message(request: Request):
         business_id = entry.get("id", "")
         if not business_id:
             return {"status": "ignored", "reason": "missing_business_id"}
-        user_config = get_user_config(business_id)
-        user_email = user_config["email"]
-
-        if not check_usage_limit(user_email):
-            logger.info("Usage limit reached for %s.", user_email)
-            return {"status": "limit_reached"}
 
         if "messaging" in entry:
+            user_config = get_user_config(business_id)
+            user_email = user_config["email"]
+            if not check_usage_limit(user_email):
+                logger.info("Usage limit reached for %s.", user_email)
+                return {"status": "limit_reached"}
+
             messaging_events = entry.get("messaging") or []
             if not isinstance(messaging_events, list) or not messaging_events:
                 return {"status": "ignored", "reason": "missing_messaging_event"}
@@ -1926,6 +1926,12 @@ async def handle_meta_message(request: Request):
                 phone_number_id = (changes.get("metadata") or {}).get("phone_number_id", "")
                 if not phone_number_id:
                     return {"status": "ignored", "reason": "missing_phone_number_id"}
+
+                user_config = get_user_config(phone_number_id)
+                user_email = user_config["email"]
+                if not check_usage_limit(user_email):
+                    logger.info("Usage limit reached for %s.", user_email)
+                    return {"status": "limit_reached"}
 
                 messages = changes.get("messages") or []
                 if not isinstance(messages, list) or not messages:

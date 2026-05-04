@@ -7,6 +7,7 @@ import logging
 import os
 import secrets
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -282,10 +283,16 @@ REFRESH_TIMESTAMP_FIELDS = {
 # ---------------------------------------------------------------------------
 
 
+@lru_cache(maxsize=1)
 def get_encryption_key() -> bytes:
     raw_key = os.getenv("TOKEN_ENCRYPTION_KEY", "").strip()
     if raw_key:
-        return raw_key.encode("utf-8")
+        try:
+            Fernet(raw_key.encode("utf-8"))
+            return raw_key.encode("utf-8")
+        except ValueError:
+            logger.warning("TOKEN_ENCRYPTION_KEY is invalid; deriving token encryption key from AUTH_SECRET.")
+
     fallback_secret = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret").encode("utf-8")
     derived = hashlib.sha256(fallback_secret).digest()
     return base64.urlsafe_b64encode(derived)
