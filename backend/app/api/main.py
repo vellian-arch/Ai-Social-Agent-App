@@ -102,6 +102,7 @@ META_APP_ID = os.getenv("META_APP_ID", "")
 META_APP_SECRET = os.getenv("META_APP_SECRET", "")
 META_REDIRECT_URI = os.getenv("META_REDIRECT_URI", "http://localhost:8000/oauth/meta/callback")
 FRONTEND_APP_URL = os.getenv("FRONTEND_APP_URL", "http://localhost:8501")
+PUBLIC_FRONTEND_APP_URL = os.getenv("PUBLIC_FRONTEND_APP_URL", "https://socialaiagent.streamlit.app")
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "").strip()
 AUTH_SECRET = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret")
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
@@ -702,18 +703,10 @@ def get_user_config(platform_id: str) -> dict[str, Any]:
 
 @app.get("/")
 async def root():
-    return {
-        "name": "Social Ai Agent API",
-        "status": "ok",
-        "health_endpoint": "/health",
-        "frontend_data_endpoints": [
-            "/api/products",
-            "/api/clients",
-            "/api/media",
-            "/api/youtube/videos",
-            "/api/conversations/{platform}",
-        ],
-    }
+    dashboard_url = FRONTEND_APP_URL
+    if dashboard_url.startswith("http://localhost") or dashboard_url.startswith("http://127.0.0.1"):
+        dashboard_url = PUBLIC_FRONTEND_APP_URL
+    return RedirectResponse(url=dashboard_url, status_code=307)
 
 
 @app.get("/health")
