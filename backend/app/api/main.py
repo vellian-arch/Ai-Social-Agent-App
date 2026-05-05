@@ -103,6 +103,7 @@ META_APP_SECRET = os.getenv("META_APP_SECRET", "")
 META_REDIRECT_URI = os.getenv("META_REDIRECT_URI", "http://localhost:8000/oauth/meta/callback")
 FRONTEND_APP_URL = os.getenv("FRONTEND_APP_URL", "http://localhost:8501")
 PUBLIC_FRONTEND_APP_URL = os.getenv("PUBLIC_FRONTEND_APP_URL", "https://socialaiagent.streamlit.app")
+DEPLOYMENT_REVISION = "redirect-root-2026-05-05"
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "").strip()
 AUTH_SECRET = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret")
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
@@ -717,6 +718,7 @@ async def health():
         "status": "ok",
         "database_backend": "postgresql" if active_database_url.startswith(("postgresql://", "postgres://")) else "sqlite",
         "database_configured": bool(active_database_url),
+        "deployment_revision": DEPLOYMENT_REVISION,
         "deployment_warnings": get_deployment_warnings(),
         "deployment_ready": len(get_deployment_warnings()) == 0,
         "ai_ready": details["ai_ok"],
