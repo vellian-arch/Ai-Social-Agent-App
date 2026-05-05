@@ -1,4 +1,4 @@
 # Supported funding model platforms
 
 custom:
-  - https://socialaiagent.streamlit.app
+  - https://socialaiagent.streamlit.app/?page=Billing&provider=paypal

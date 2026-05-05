@@ -266,6 +266,37 @@ def ensure_session_state():
             else:
                 st.session_state[key] = value
 
+
+def get_query_param(name: str) -> str:
+    query_params = getattr(st, "query_params", None)
+    if query_params is not None:
+        try:
+            value = query_params.get(name, "")
+        except Exception:
+            value = ""
+    else:
+        legacy_getter = getattr(st, "experimental_get_query_params", None)
+        params = legacy_getter() if callable(legacy_getter) else {}
+        value = params.get(name, "")
+
+    if isinstance(value, list):
+        return str(value[0]) if value else ""
+    return str(value or "")
+
+
+def apply_deep_link_params():
+    if st.session_state.get("deep_link_applied"):
+        return
+
+    page = get_query_param("page").strip().lower()
+    provider = get_query_param("provider").strip().lower()
+    if page == "billing" or provider == "paypal":
+        st.session_state.current_page = "Billing"
+        st.session_state.show_landing = False
+        st.session_state.show_register = False
+        st.session_state.preferred_billing_provider = provider or "paypal"
+        st.session_state.deep_link_applied = True
+
 # =============================================================================
 # PLATFORM PRICING
 # =============================================================================
@@ -6516,6 +6547,7 @@ def documentation_page():
 
 def main():
     ensure_session_state()
+    apply_deep_link_params()
     apply_styling()
     inject_favicon_override()
     render_app_topbar()
