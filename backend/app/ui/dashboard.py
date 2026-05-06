@@ -6580,6 +6580,7 @@ def main():
         login_screen()
         return
 
+    refresh_authenticated_user_status()
     render_sidebar()
 
     subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
