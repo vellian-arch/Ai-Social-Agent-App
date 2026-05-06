@@ -67,6 +67,8 @@ if "user_role" not in st.session_state:
     st.session_state.user_role = ""
 if "subscription_status" not in st.session_state:
     st.session_state.subscription_status = "inactive"
+if "trial_ends_at" not in st.session_state:
+    st.session_state.trial_ends_at = ""
 if "platform_status" not in st.session_state:
     st.session_state.platform_status = {
         "TikTok": "Available",
@@ -188,6 +190,7 @@ def ensure_session_state():
         "user_email": "",
         "user_role": "",
         "subscription_status": "inactive",
+        "trial_ends_at": "",
         "auth_token": "",
         "platform_status": {
             "TikTok": "Available",
@@ -3331,6 +3334,7 @@ def register_user(email, password):
         user = result.get("user", {})
         st.session_state.auth_token = result.get("token", "")
         st.session_state.subscription_status = (user.get("subscription_status") or "inactive").strip().lower()
+        st.session_state.trial_ends_at = user.get("trial_ends_at", "")
         return True
     return False
 
@@ -3345,7 +3349,7 @@ def handle_password_reset(email):
     return False, "We could not send a reset email. Check the address and server email settings."
 
 
-def apply_login_state(email, name="", role="User", token="", subscription_status="inactive"):
+def apply_login_state(email, name="", role="User", token="", subscription_status="inactive", trial_ends_at=""):
     normalized_email = (email or "").strip().lower()
     st.session_state.logged_in = True
     st.session_state.show_landing = False
@@ -3354,6 +3358,22 @@ def apply_login_state(email, name="", role="User", token="", subscription_status
     st.session_state.user_name = (name or normalized_email.split("@")[0]).strip()
     st.session_state.user_role = (role or "User").strip() or "User"
     st.session_state.subscription_status = (subscription_status or "inactive").strip().lower() or "inactive"
+    st.session_state.trial_ends_at = trial_ends_at or ""
+
+
+def refresh_authenticated_user_status():
+    if not st.session_state.get("auth_token"):
+        return
+    result = api_get("/api/auth/me")
+    if not result or result.get("status") != "success":
+        return
+    user = result.get("user", {})
+    st.session_state.subscription_status = (user.get("subscription_status") or "inactive").strip().lower() or "inactive"
+    st.session_state.trial_ends_at = user.get("trial_ends_at", "")
+    if user.get("name"):
+        st.session_state.user_name = user.get("name")
+    if user.get("role"):
+        st.session_state.user_role = user.get("role")
 
 
 def refresh_workspace_after_login():
@@ -3472,6 +3492,7 @@ def check_password(email, password):
             user.get("role", "User"),
             result.get("token", ""),
             user.get("subscription_status", "inactive"),
+            user.get("trial_ends_at", ""),
         )
         return True
     return False

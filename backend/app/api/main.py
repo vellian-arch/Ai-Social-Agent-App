@@ -167,15 +167,40 @@ def effective_subscription_status(user: dict[str, Any] | None) -> str:
     status = str(user.get("subscription_status", "")).strip().lower()
     if status == "active":
         return "active"
-    if status == "trial":
-        trial_ends_at = parse_trial_datetime(user.get("trial_ends_at"))
-        if trial_ends_at and trial_ends_at > datetime.utcnow():
-            return "trial"
+    trial_ends_at = get_trial_ends_at(user)
+    if trial_ends_at and trial_ends_at > datetime.utcnow():
+        return "trial"
     return "inactive"
 
 
 def is_subscription_active(user: dict[str, Any] | None) -> bool:
     return effective_subscription_status(user) in {"active", "trial"}
+
+
+def get_trial_ends_at(user: dict[str, Any] | None) -> datetime | None:
+    if not user:
+        return None
+    explicit_trial_end = parse_trial_datetime(user.get("trial_ends_at"))
+    if explicit_trial_end:
+        return explicit_trial_end
+    created_at = parse_trial_datetime(user.get("created_at"))
+    if created_at:
+        return created_at + timedelta(days=TRIAL_DAYS)
+    return None
+
+
+def serialize_datetime(value: datetime | None) -> str:
+    return value.replace(microsecond=0).isoformat() if value else ""
+
+
+def public_user_payload(user: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "email": user["email"],
+        "name": user.get("name") or user["email"].split("@")[0],
+        "role": user.get("role") or "User",
+        "subscription_status": effective_subscription_status(user),
+        "trial_ends_at": serialize_datetime(get_trial_ends_at(user)),
+    }
 
 
 def require_active_subscription(user_email: str) -> dict[str, Any]:
@@ -1265,13 +1290,7 @@ async def api_register(payload: dict[str, Any]):
     return {
         "status": "success",
         "token": create_access_token(user),
-        "user": {
-            "email": user["email"],
-            "name": user.get("name") or user["email"].split("@")[0],
-            "role": user.get("role") or "User",
-            "subscription_status": effective_subscription_status(user),
-            "trial_ends_at": user.get("trial_ends_at"),
-        },
+        "user": public_user_payload(user),
     }
 
 
@@ -1285,14 +1304,14 @@ async def api_login(payload: dict[str, Any]):
     return {
         "status": "success",
         "token": create_access_token(user),
-        "user": {
-            "email": user["email"],
-            "name": user.get("name") or user["email"].split("@")[0],
-            "role": user.get("role") or "User",
-            "subscription_status": effective_subscription_status(user),
-            "trial_ends_at": user.get("trial_ends_at"),
-        },
+        "user": public_user_payload(user),
     }
+
+
+@app.get("/api/auth/me")
+async def api_auth_me(request: Request):
+    user = get_authenticated_user(request)
+    return {"status": "success", "user": public_user_payload(user)}
 
 
 @app.post("/api/auth/forgot-password")
