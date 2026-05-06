@@ -106,6 +106,7 @@ Common values include:
 - `PAYPAL_CLIENT_ID`
 - `PAYPAL_CLIENT_SECRET`
 - `PAYPAL_ENV`
+- `PAYPAL_ANY_AMOUNT_URL`
 - `DODO_PAYMENTS_API_KEY`
 - `DODO_ENV`
 - `GEMINI_API_KEY`
@@ -134,6 +135,7 @@ FRONTEND_APP_URL=https://socialaiagent.streamlit.app
 PAYSTACK_CALLBACK_URL=https://socialaiagent.streamlit.app
 PAYPAL_RETURN_URL=https://socialaiagent.streamlit.app
 PAYPAL_CANCEL_URL=https://socialaiagent.streamlit.app
+PAYPAL_ANY_AMOUNT_URL=https://www.paypal.com/donate/?hosted_button_id=YOUR_BUTTON_ID
 DODO_RETURN_URL=https://socialaiagent.streamlit.app
 ```
 

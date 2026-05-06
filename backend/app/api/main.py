@@ -12,9 +12,10 @@ import time
 import hmac
 import hashlib
 import smtplib
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 from typing import Any
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from email.message import EmailMessage
 from pathlib import Path
 from sqlalchemy import insert, select, update
@@ -70,7 +71,9 @@ from live_payments import (
     PAYPAL_CANCEL_URL,
     PAYPAL_ENV,
     PAYPAL_RETURN_URL,
+    capture_paypal_support_order,
     create_paypal_order,
+    create_paypal_support_order,
     create_paystack_checkout,
     paypal_enabled,
     sync_paypal_order,
@@ -105,10 +108,11 @@ FRONTEND_APP_URL = os.getenv("FRONTEND_APP_URL", "http://localhost:8501")
 PUBLIC_FRONTEND_APP_URL = os.getenv("PUBLIC_FRONTEND_APP_URL", "https://socialaiagent.streamlit.app")
 PUBLIC_PAYPAL_PAYMENT_URL = os.getenv(
     "PUBLIC_PAYPAL_PAYMENT_URL",
-    f"{PUBLIC_FRONTEND_APP_URL.rstrip('/')}?page=Billing&provider=paypal",
+    "https://ai-social-agent-app.onrender.com/support/paypal",
 )
-DEPLOYMENT_REVISION = "paypal-billing-link-2026-05-05"
+DEPLOYMENT_REVISION = "paypal-any-amount-support-2026-05-06"
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "").strip()
+PAYPAL_ANY_AMOUNT_URL = os.getenv("PAYPAL_ANY_AMOUNT_URL", "").strip()
 AUTH_SECRET = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret")
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587") or "587")
@@ -304,6 +308,158 @@ async def paypal_cancel_page():
         build_frontend_redirect_html(
             "PayPal cancelled",
             "PayPal checkout was cancelled. You can return to Billing to try again.",
+        )
+    )
+
+
+@app.get("/support/paypal")
+async def paypal_support_page(request: Request):
+    amount_text = (request.query_params.get("amount") or "").strip()
+    if not amount_text:
+        if PAYPAL_ANY_AMOUNT_URL:
+            return RedirectResponse(url=PAYPAL_ANY_AMOUNT_URL, status_code=303)
+        return RedirectResponse(url="/support/paypal/custom", status_code=303)
+
+    donor_email = (request.query_params.get("email") or "").strip()
+    amount_cents = parse_support_amount_cents(amount_text)
+
+    try:
+        order = create_paypal_support_order(amount_cents, donor_email=donor_email)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    payment_link = order.get("payment_link", "")
+    if not payment_link:
+        raise HTTPException(status_code=503, detail="PayPal did not return a checkout link")
+    return RedirectResponse(url=payment_link, status_code=303)
+
+
+@app.get("/support/paypal/custom")
+async def paypal_support_custom_page():
+    return HTMLResponse(
+        """
+        <html>
+            <head>
+                <title>Support Social Ai Agent</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        background: #f7fafc;
+                        color: #102033;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        margin: 0;
+                    }
+                    main {
+                        width: min(520px, calc(100vw - 32px));
+                        background: white;
+                        border: 1px solid #d6e4f0;
+                        border-radius: 16px;
+                        padding: 28px;
+                        box-shadow: 0 14px 40px rgba(22, 58, 112, 0.1);
+                    }
+                    label {
+                        display: block;
+                        color: #456078;
+                        font-size: 0.9rem;
+                        font-weight: 700;
+                        margin: 16px 0 8px;
+                    }
+                    input {
+                        width: 100%;
+                        box-sizing: border-box;
+                        border: 1px solid #b8c6d3;
+                        border-radius: 10px;
+                        font-size: 1rem;
+                        padding: 13px 14px;
+                    }
+                    button {
+                        width: 100%;
+                        border: 0;
+                        border-radius: 999px;
+                        background: #0070ba;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        font-weight: 800;
+                        margin-top: 20px;
+                        padding: 14px 18px;
+                    }
+                </style>
+            </head>
+            <body>
+                <main>
+                    <h1>Support Social Ai Agent</h1>
+                    <p>Choose any amount you would like to send through PayPal.</p>
+                    <form action="/support/paypal/checkout" method="post">
+                        <label for="amount">Amount in USD</label>
+                        <input id="amount" name="amount" type="number" min="1" step="0.01" value="25" required>
+                        <label for="email">Email, optional</label>
+                        <input id="email" name="email" type="email" placeholder="you@example.com">
+                        <button type="submit">Continue to PayPal</button>
+                    </form>
+                </main>
+            </body>
+        </html>
+        """
+    )
+
+
+def parse_support_amount_cents(amount_text: str) -> int:
+    try:
+        amount = Decimal(amount_text).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Enter a valid support amount") from exc
+    if amount < 1 or amount > 10000:
+        raise HTTPException(status_code=400, detail="Support amount must be between $1 and $10,000")
+    return int(amount * 100)
+
+
+@app.post("/support/paypal/checkout")
+async def paypal_support_checkout(request: Request):
+    body = (await request.body()).decode("utf-8")
+    form = parse_qs(body)
+    amount_text = (form.get("amount", [""])[0] or "").strip()
+    donor_email = (form.get("email", [""])[0] or "").strip()
+    amount_cents = parse_support_amount_cents(amount_text)
+
+    try:
+        order = create_paypal_support_order(amount_cents, donor_email=donor_email)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    payment_link = order.get("payment_link", "")
+    if not payment_link:
+        raise HTTPException(status_code=503, detail="PayPal did not return a checkout link")
+    return RedirectResponse(url=payment_link, status_code=303)
+
+
+@app.get("/support/paypal/return")
+async def paypal_support_return(request: Request):
+    order_id = (request.query_params.get("token") or "").strip()
+    if order_id:
+        try:
+            capture_paypal_support_order(order_id)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return HTMLResponse(
+        build_frontend_redirect_html(
+            "Thank you for the support",
+            "Your PayPal support payment has been received. Redirecting back to Social Ai Agent.",
+        )
+    )
+
+
+@app.get("/support/paypal/cancel")
+async def paypal_support_cancel():
+    return HTMLResponse(
+        build_frontend_redirect_html(
+            "Support payment cancelled",
+            "The PayPal support checkout was cancelled. You can return to Social Ai Agent anytime.",
         )
     )
 

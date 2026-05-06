@@ -48,6 +48,8 @@ PAYPAL_CANCEL_URL = _public_return_url(
     "/payments/paypal/cancel",
     os.getenv("PAYPAL_CANCEL_URL", _DEFAULT_FRONTEND_URL).strip(),
 )
+PAYPAL_SUPPORT_RETURN_URL = _public_return_url("/support/paypal/return", PAYPAL_RETURN_URL)
+PAYPAL_SUPPORT_CANCEL_URL = _public_return_url("/support/paypal/cancel", PAYPAL_CANCEL_URL)
 DODO_RETURN_URL = _public_return_url(
     "/payments/dodo/return",
     os.getenv("DODO_RETURN_URL", _DEFAULT_FRONTEND_URL).strip(),
@@ -401,6 +403,48 @@ def create_paypal_order(plan_key: str, plan_label: str, price_cents: int, user_e
 def capture_paypal_order(order_id: str) -> dict[str, Any]:
     access_token = _paypal_access_token()
     return _paypal_request("GET", f"/v1/billing/subscriptions/{order_id}", access_token=access_token)
+
+
+def create_paypal_support_order(amount_cents: int, donor_email: str = "") -> dict[str, Any]:
+    if amount_cents < 100:
+        raise RuntimeError("PayPal support amount must be at least $1.00")
+
+    access_token = _paypal_access_token()
+    order = _paypal_request(
+        "POST",
+        "/v2/checkout/orders",
+        access_token=access_token,
+        json={
+            "intent": "CAPTURE",
+            "purchase_units": [
+                {
+                    "description": "Support Social Ai Agent",
+                    "amount": {
+                        "currency_code": "USD",
+                        "value": f"{amount_cents / 100:.2f}",
+                    },
+                }
+            ],
+            "payer": {"email_address": donor_email} if donor_email else {},
+            "application_context": {
+                "brand_name": "Social Ai Agent",
+                "return_url": PAYPAL_SUPPORT_RETURN_URL,
+                "cancel_url": PAYPAL_SUPPORT_CANCEL_URL,
+                "shipping_preference": "NO_SHIPPING",
+                "user_action": "PAY_NOW",
+            },
+        },
+    )
+    approve_url = next((link.get("href") for link in order.get("links", []) if link.get("rel") == "approve"), "")
+    return {
+        **order,
+        "payment_link": approve_url,
+    }
+
+
+def capture_paypal_support_order(order_id: str) -> dict[str, Any]:
+    access_token = _paypal_access_token()
+    return _paypal_request("POST", f"/v2/checkout/orders/{order_id}/capture", access_token=access_token)
 
 
 def sync_paypal_order(order_id: str) -> dict[str, Any]:
