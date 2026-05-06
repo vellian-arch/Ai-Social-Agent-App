@@ -12,6 +12,7 @@ import time
 import hmac
 import hashlib
 import smtplib
+import html
 from urllib.parse import parse_qs, urlencode
 from typing import Any
 from datetime import datetime, timedelta
@@ -108,9 +109,9 @@ FRONTEND_APP_URL = os.getenv("FRONTEND_APP_URL", "http://localhost:8501")
 PUBLIC_FRONTEND_APP_URL = os.getenv("PUBLIC_FRONTEND_APP_URL", "https://socialaiagent.streamlit.app")
 PUBLIC_PAYPAL_PAYMENT_URL = os.getenv(
     "PUBLIC_PAYPAL_PAYMENT_URL",
-    "https://ai-social-agent-app.onrender.com/support/paypal",
+    "https://ai-social-agent-app.onrender.com/subscriptions/paypal",
 )
-DEPLOYMENT_REVISION = "paypal-any-amount-support-2026-05-06"
+DEPLOYMENT_REVISION = "paypal-subscription-funding-2026-05-06"
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "").strip()
 PAYPAL_ANY_AMOUNT_URL = os.getenv("PAYPAL_ANY_AMOUNT_URL", "").strip()
 AUTH_SECRET = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret")
@@ -416,6 +417,264 @@ def parse_support_amount_cents(amount_text: str) -> int:
     if amount < 1 or amount > 10000:
         raise HTTPException(status_code=400, detail="Support amount must be between $1 and $10,000")
     return int(amount * 100)
+
+
+def get_public_subscription_plan(plan_key: str):
+    return next((item for item in PLAN_DEFINITIONS if item.key == plan_key), None)
+
+
+@app.get("/subscriptions/paypal")
+async def paypal_subscriptions_page():
+    plan_cards = []
+    for plan in PLAN_DEFINITIONS:
+        plan_key = html.escape(plan.key)
+        label = html.escape(plan.label)
+        description = html.escape(plan.description)
+        price = f"${plan.price_cents / 100:.2f}"
+        plan_cards.append(
+            f"""
+            <article>
+                <div>
+                    <h2>{label}</h2>
+                    <p>{description}</p>
+                    <strong>{price}<span>/month</span></strong>
+                </div>
+                <form action="/subscriptions/paypal/checkout" method="post">
+                    <input type="hidden" name="plan_key" value="{plan_key}">
+                    <label for="email-{plan_key}">Email</label>
+                    <input id="email-{plan_key}" name="email" type="email" placeholder="you@example.com" required>
+                    <label for="name-{plan_key}">Name, optional</label>
+                    <input id="name-{plan_key}" name="name" type="text" placeholder="Your name">
+                    <button type="submit">Subscribe with PayPal</button>
+                </form>
+            </article>
+            """
+        )
+
+    return HTMLResponse(
+        f"""
+        <html>
+            <head>
+                <title>Subscribe to Social Ai Agent</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background: #f7fafc;
+                        color: #102033;
+                        margin: 0;
+                    }}
+                    main {{
+                        width: min(1120px, calc(100vw - 32px));
+                        margin: 0 auto;
+                        padding: 42px 0;
+                    }}
+                    header {{
+                        margin-bottom: 24px;
+                    }}
+                    h1 {{
+                        font-size: clamp(2rem, 4vw, 3.2rem);
+                        margin: 0 0 10px;
+                    }}
+                    header p {{
+                        color: #456078;
+                        font-size: 1.05rem;
+                        margin: 0;
+                    }}
+                    section {{
+                        display: grid;
+                        gap: 16px;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    }}
+                    article {{
+                        background: white;
+                        border: 1px solid #d6e4f0;
+                        border-radius: 12px;
+                        box-shadow: 0 14px 40px rgba(22, 58, 112, 0.08);
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        min-height: 360px;
+                        padding: 22px;
+                    }}
+                    h2 {{
+                        font-size: 1.25rem;
+                        margin: 0 0 8px;
+                    }}
+                    article p {{
+                        color: #456078;
+                        line-height: 1.45;
+                        margin: 0 0 18px;
+                    }}
+                    strong {{
+                        display: block;
+                        font-size: 2rem;
+                        margin-bottom: 18px;
+                    }}
+                    span {{
+                        color: #60758a;
+                        font-size: 0.95rem;
+                        font-weight: 600;
+                    }}
+                    label {{
+                        display: block;
+                        color: #456078;
+                        font-size: 0.85rem;
+                        font-weight: 700;
+                        margin: 12px 0 6px;
+                    }}
+                    input {{
+                        width: 100%;
+                        box-sizing: border-box;
+                        border: 1px solid #b8c6d3;
+                        border-radius: 10px;
+                        font-size: 1rem;
+                        padding: 12px 13px;
+                    }}
+                    button {{
+                        width: 100%;
+                        border: 0;
+                        border-radius: 999px;
+                        background: #0070ba;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        font-weight: 800;
+                        margin-top: 16px;
+                        padding: 13px 18px;
+                    }}
+                    .support-link {{
+                        color: #0070ba;
+                        display: inline-block;
+                        font-weight: 700;
+                        margin-top: 22px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <main>
+                    <header>
+                        <h1>Subscribe to Social Ai Agent</h1>
+                        <p>Choose a monthly plan and continue to PayPal to approve the subscription.</p>
+                    </header>
+                    <section>
+                        {''.join(plan_cards)}
+                    </section>
+                    <a class="support-link" href="/support/paypal">Send a one-time PayPal support payment instead</a>
+                </main>
+            </body>
+        </html>
+        """
+    )
+
+
+@app.get("/subscriptions/paypal/{plan_key}")
+async def paypal_subscription_plan_page(plan_key: str):
+    plan = get_public_subscription_plan(plan_key)
+    if not plan:
+        raise HTTPException(status_code=404, detail=f"Unknown plan: {plan_key}")
+
+    return HTMLResponse(
+        f"""
+        <html>
+            <head>
+                <title>{html.escape(plan.label)} PayPal Subscription</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background: #f7fafc;
+                        color: #102033;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        margin: 0;
+                    }}
+                    main {{
+                        width: min(520px, calc(100vw - 32px));
+                        background: white;
+                        border: 1px solid #d6e4f0;
+                        border-radius: 16px;
+                        padding: 28px;
+                        box-shadow: 0 14px 40px rgba(22, 58, 112, 0.1);
+                    }}
+                    h1 {{ margin: 0 0 8px; }}
+                    p {{ color: #456078; line-height: 1.45; }}
+                    strong {{ display: block; font-size: 2rem; margin: 18px 0; }}
+                    label {{
+                        display: block;
+                        color: #456078;
+                        font-size: 0.9rem;
+                        font-weight: 700;
+                        margin: 16px 0 8px;
+                    }}
+                    input {{
+                        width: 100%;
+                        box-sizing: border-box;
+                        border: 1px solid #b8c6d3;
+                        border-radius: 10px;
+                        font-size: 1rem;
+                        padding: 13px 14px;
+                    }}
+                    button {{
+                        width: 100%;
+                        border: 0;
+                        border-radius: 999px;
+                        background: #0070ba;
+                        color: white;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        font-weight: 800;
+                        margin-top: 20px;
+                        padding: 14px 18px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <main>
+                    <h1>{html.escape(plan.label)}</h1>
+                    <p>{html.escape(plan.description)}</p>
+                    <strong>${plan.price_cents / 100:.2f}/month</strong>
+                    <form action="/subscriptions/paypal/checkout" method="post">
+                        <input type="hidden" name="plan_key" value="{html.escape(plan.key)}">
+                        <label for="email">Email</label>
+                        <input id="email" name="email" type="email" placeholder="you@example.com" required>
+                        <label for="name">Name, optional</label>
+                        <input id="name" name="name" type="text" placeholder="Your name">
+                        <button type="submit">Subscribe with PayPal</button>
+                    </form>
+                </main>
+            </body>
+        </html>
+        """
+    )
+
+
+@app.post("/subscriptions/paypal/checkout")
+async def paypal_subscription_checkout(request: Request):
+    body = (await request.body()).decode("utf-8")
+    form = parse_qs(body)
+    plan_key = (form.get("plan_key", [""])[0] or "").strip()
+    user_email = (form.get("email", [""])[0] or "").strip()
+    customer_name = (form.get("name", [""])[0] or "").strip()
+
+    if not user_email or "@" not in user_email:
+        raise HTTPException(status_code=400, detail="Enter a valid email address")
+
+    plan = get_public_subscription_plan(plan_key)
+    if not plan:
+        raise HTTPException(status_code=400, detail=f"Unknown plan: {plan_key}")
+
+    try:
+        order = create_paypal_order(plan.key, plan.label, plan.price_cents, user_email, customer_name=customer_name)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    payment_link = order.get("payment_link", "")
+    if not payment_link:
+        raise HTTPException(status_code=503, detail="PayPal did not return a subscription approval link")
+    return RedirectResponse(url=payment_link, status_code=303)
 
 
 @app.post("/support/paypal/checkout")

@@ -136,6 +136,7 @@ PAYSTACK_CALLBACK_URL=https://socialaiagent.streamlit.app
 PAYPAL_RETURN_URL=https://socialaiagent.streamlit.app
 PAYPAL_CANCEL_URL=https://socialaiagent.streamlit.app
 PAYPAL_ANY_AMOUNT_URL=https://www.paypal.com/donate/?hosted_button_id=YOUR_BUTTON_ID
+PUBLIC_PAYPAL_PAYMENT_URL=https://ai-social-agent-app.onrender.com/subscriptions/paypal
 DODO_RETURN_URL=https://socialaiagent.streamlit.app
 ```
 
