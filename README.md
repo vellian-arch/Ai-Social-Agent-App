@@ -19,6 +19,14 @@ It combines:
 - Generate AI-assisted replies and follow-up actions
 - Gate workspace access behind an active monthly subscription
 
+## Sponsorship
+
+Social Ai Agent is a startup app built to help small businesses connect their social platforms, manage conversations, use AI replies, and turn social engagement into sales from one workspace.
+
+Sponsorship helps cover the startup costs needed to keep the app live and improving, including hosting, database services, AI/API usage, payment processing setup, security, testing, and ongoing development.
+
+Any amount helps keep the project moving while we build a reliable product for real business users.
+
 ## Repository Layout
 
 ```text
