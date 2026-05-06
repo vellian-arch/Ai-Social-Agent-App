@@ -109,9 +109,9 @@ FRONTEND_APP_URL = os.getenv("FRONTEND_APP_URL", "http://localhost:8501")
 PUBLIC_FRONTEND_APP_URL = os.getenv("PUBLIC_FRONTEND_APP_URL", "https://socialaiagent.streamlit.app")
 PUBLIC_PAYPAL_PAYMENT_URL = os.getenv(
     "PUBLIC_PAYPAL_PAYMENT_URL",
-    "https://ai-social-agent-app.onrender.com/subscriptions/paypal",
+    "https://ai-social-agent-app.onrender.com/support/paypal",
 )
-DEPLOYMENT_REVISION = "paypal-subscription-funding-2026-05-06"
+DEPLOYMENT_REVISION = "paypal-any-amount-sponsor-2026-05-06"
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "").strip()
 PAYPAL_ANY_AMOUNT_URL = os.getenv("PAYPAL_ANY_AMOUNT_URL", "").strip()
 AUTH_SECRET = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret")
