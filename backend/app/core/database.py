@@ -6,7 +6,7 @@ import hmac
 import logging
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -87,6 +87,7 @@ users = Table(
     Column("email", String(255), unique=True, index=True),
     Column("password", Text),
     Column("subscription_status", String(64), server_default="inactive"),
+    Column("trial_ends_at", DateTime),
     Column("message_count", Integer, server_default="0"),
     Column("message_limit", Integer, server_default="1000"),
     Column("phone_id", Text),
@@ -224,6 +225,7 @@ billing_products = Table(
     Column("dodo_product_id", Text),
     Column("paypal_product_id", Text),
     Column("paypal_plan_id", Text),
+    Column("paypal_trial_days", Integer, server_default="0"),
     Column("paystack_plan_code", Text),
     Column("price_cents", Integer),
     Column("currency", String(8), server_default="USD"),
@@ -398,7 +400,32 @@ def init_db() -> None:
     SQLite (dev) and Postgres (Neon) and will create missing tables/columns.
     """
     metadata.create_all(engine)
+    _ensure_user_columns()
     _ensure_billing_product_columns()
+
+
+def _ensure_user_columns() -> None:
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    required_columns = {
+        "trial_ends_at": DateTime,
+    }
+
+    with engine.begin() as conn:
+        existing_columns = {
+            column["name"]
+            for column in inspector.get_columns("users")
+        }
+        for column_name, column_type in required_columns.items():
+            if column_name in existing_columns:
+                continue
+            try:
+                ddl_type = column_type().compile(dialect=engine.dialect)
+                conn.execute(text(f'ALTER TABLE users ADD COLUMN "{column_name}" {ddl_type}'))
+            except Exception:
+                logger.warning("User schema migration skipped for column %s", column_name)
 
 
 def _ensure_billing_product_columns() -> None:
@@ -409,6 +436,7 @@ def _ensure_billing_product_columns() -> None:
     required_columns = {
         "paypal_product_id": Text,
         "paypal_plan_id": Text,
+        "paypal_trial_days": Integer,
         "paystack_plan_code": Text,
     }
 
@@ -722,7 +750,8 @@ def create_user_account(email: str, password: str, name: str = "", role: str = "
         password=hash_password(password),
         name=(name or normalized_email.split("@")[0]).strip(),
         role=role,
-        subscription_status="inactive",
+        subscription_status="trial",
+        trial_ends_at=datetime.utcnow() + timedelta(days=1),
     )
     try:
         execute_commit(stmt)
@@ -933,6 +962,7 @@ def upsert_billing_product(
     paypal_product_id: str = "",
     paypal_plan_id: str = "",
     paystack_plan_code: str = "",
+    paypal_trial_days: Optional[int] = None,
     currency: str = "USD",
     billing_cycle: str = "monthly",
     product_kind: str = "subscription",
@@ -951,6 +981,8 @@ def upsert_billing_product(
         "product_kind": product_kind,
         "updated_at": func.current_timestamp(),
     }
+    if paypal_trial_days is not None:
+        values["paypal_trial_days"] = paypal_trial_days
     if existing:
         stmt = update(billing_products).where(billing_products.c.plan_key == plan_key).values(**values)
     else:

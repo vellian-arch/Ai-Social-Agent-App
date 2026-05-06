@@ -3868,8 +3868,8 @@ def render_sidebar():
         """, unsafe_allow_html=True)
 
         subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
-        badge_text = "Active" if subscription_status == "active" else "Locked"
-        badge_bg = "#16a34a" if subscription_status == "active" else "#f97316"
+        badge_text = "Trial" if subscription_status == "trial" else ("Active" if subscription_status == "active" else "Locked")
+        badge_bg = "#0f766e" if subscription_status == "trial" else ("#16a34a" if subscription_status == "active" else "#f97316")
         st.markdown(
             f"""
             <div style='margin: 0 0 12px 0; padding: 10px 12px; border-radius: 12px; background: {badge_bg}; color: white; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;'>
@@ -3901,7 +3901,7 @@ def render_sidebar():
         st.markdown("---")
 
         subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
-        is_paid = subscription_status == "active"
+        is_paid = subscription_status in {"active", "trial"}
         if is_paid:
             menu_options = [
                 t('dashboard'),
@@ -4020,7 +4020,7 @@ def render_sidebar():
 
 
 def render_subscription_banner(subscription_status: str) -> None:
-    if (subscription_status or "").strip().lower() == "active":
+    if (subscription_status or "").strip().lower() in {"active", "trial"}:
         return
 
     theme = get_theme_tokens()
@@ -5527,7 +5527,7 @@ def seed_connected_platform(platform):
 def connections_page():
     theme = get_theme_tokens()
     subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
-    if subscription_status != "active":
+    if subscription_status not in {"active", "trial"}:
         st.markdown(
             f"""
             <div style='background:{theme["card"]}; border:1px solid {theme["border"]}; border-radius:18px; padding:18px; margin-bottom:18px;'>
@@ -6562,7 +6562,7 @@ def main():
     render_sidebar()
 
     subscription_status = (st.session_state.get("subscription_status") or "inactive").strip().lower()
-    if subscription_status != "active" and st.session_state.current_page in {"Connections", "Billing"}:
+    if subscription_status not in {"active", "trial"} and st.session_state.current_page in {"Connections", "Billing"}:
         render_subscription_banner(subscription_status)
 
     page_handlers = {

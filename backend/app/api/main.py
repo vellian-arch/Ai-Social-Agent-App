@@ -111,9 +111,10 @@ PUBLIC_PAYPAL_PAYMENT_URL = os.getenv(
     "PUBLIC_PAYPAL_PAYMENT_URL",
     "https://ai-social-agent-app.onrender.com/support/paypal",
 )
-DEPLOYMENT_REVISION = "paypal-any-amount-sponsor-2026-05-06"
+DEPLOYMENT_REVISION = "one-day-trial-before-subscription-2026-05-06"
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "").strip()
 PAYPAL_ANY_AMOUNT_URL = os.getenv("PAYPAL_ANY_AMOUNT_URL", "").strip()
+TRIAL_DAYS = 1
 AUTH_SECRET = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret")
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587") or "587")
@@ -148,8 +149,33 @@ def get_deployment_warnings() -> list[str]:
     return warnings
 
 
+def parse_trial_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return None
+    try:
+        return datetime.fromisoformat(raw_value.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def effective_subscription_status(user: dict[str, Any] | None) -> str:
+    if not user:
+        return "inactive"
+    status = str(user.get("subscription_status", "")).strip().lower()
+    if status == "active":
+        return "active"
+    if status == "trial":
+        trial_ends_at = parse_trial_datetime(user.get("trial_ends_at"))
+        if trial_ends_at and trial_ends_at > datetime.utcnow():
+            return "trial"
+    return "inactive"
+
+
 def is_subscription_active(user: dict[str, Any] | None) -> bool:
-    return bool(user and str(user.get("subscription_status", "")).strip().lower() == "active")
+    return effective_subscription_status(user) in {"active", "trial"}
 
 
 def require_active_subscription(user_email: str) -> dict[str, Any]:
@@ -182,7 +208,7 @@ async def block_unpaid_feature_access(request: Request, call_next):
                         status_code=402,
                         content={
                             "detail": "Monthly subscription required",
-                            "subscription_status": user.get("subscription_status", "inactive"),
+                            "subscription_status": effective_subscription_status(user),
                         },
                     )
             except HTTPException as exc:
@@ -437,6 +463,7 @@ async def paypal_subscriptions_page():
                 <div>
                     <h2>{label}</h2>
                     <p>{description}</p>
+                    <p class="trial-note">Includes a {TRIAL_DAYS}-day free trial before billing starts.</p>
                     <strong>{price}<span>/month</span></strong>
                 </div>
                 <form action="/subscriptions/paypal/checkout" method="post">
@@ -506,6 +533,11 @@ async def paypal_subscriptions_page():
                         line-height: 1.45;
                         margin: 0 0 18px;
                     }}
+                    .trial-note {{
+                        color: #0f766e;
+                        font-weight: 700;
+                        margin-bottom: 14px;
+                    }}
                     strong {{
                         display: block;
                         font-size: 2rem;
@@ -555,7 +587,7 @@ async def paypal_subscriptions_page():
                 <main>
                     <header>
                         <h1>Subscribe to Social Ai Agent</h1>
-                        <p>Choose a monthly plan and continue to PayPal to approve the subscription.</p>
+                        <p>Choose a monthly plan and continue to PayPal. Billing starts after a {TRIAL_DAYS}-day free trial.</p>
                     </header>
                     <section>
                         {''.join(plan_cards)}
@@ -635,6 +667,7 @@ async def paypal_subscription_plan_page(plan_key: str):
                 <main>
                     <h1>{html.escape(plan.label)}</h1>
                     <p>{html.escape(plan.description)}</p>
+                    <p>Includes a {TRIAL_DAYS}-day free trial before billing starts.</p>
                     <strong>${plan.price_cents / 100:.2f}/month</strong>
                     <form action="/subscriptions/paypal/checkout" method="post">
                         <input type="hidden" name="plan_key" value="{html.escape(plan.key)}">
@@ -1236,7 +1269,8 @@ async def api_register(payload: dict[str, Any]):
             "email": user["email"],
             "name": user.get("name") or user["email"].split("@")[0],
             "role": user.get("role") or "User",
-            "subscription_status": user.get("subscription_status", "inactive"),
+            "subscription_status": effective_subscription_status(user),
+            "trial_ends_at": user.get("trial_ends_at"),
         },
     }
 
@@ -1255,7 +1289,8 @@ async def api_login(payload: dict[str, Any]):
             "email": user["email"],
             "name": user.get("name") or user["email"].split("@")[0],
             "role": user.get("role") or "User",
-            "subscription_status": user.get("subscription_status", "inactive"),
+            "subscription_status": effective_subscription_status(user),
+            "trial_ends_at": user.get("trial_ends_at"),
         },
     }
 
@@ -1791,6 +1826,7 @@ async def api_billing_plans(request: Request):
                 "label": plan.label,
                 "price_cents": plan.price_cents,
                 "description": plan.description,
+                "trial_days": TRIAL_DAYS,
                 "dodo_product_id": stored.get("dodo_product_id", ""),
                 "paypal_product_id": stored.get("paypal_product_id", ""),
                 "paypal_plan_id": stored.get("paypal_plan_id", ""),

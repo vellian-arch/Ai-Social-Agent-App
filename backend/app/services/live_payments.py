@@ -40,6 +40,7 @@ PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "").strip()
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "").strip()
 PAYPAL_ENV = os.getenv("PAYPAL_ENV", "live").strip().lower()
 PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com" if PAYPAL_ENV == "sandbox" else "https://api-m.paypal.com"
+PAYPAL_SUBSCRIPTION_TRIAL_DAYS = 1
 PAYPAL_RETURN_URL = _public_return_url(
     "/payments/paypal/return",
     os.getenv("PAYPAL_RETURN_URL", _DEFAULT_FRONTEND_URL).strip(),
@@ -280,6 +281,7 @@ def _paypal_get_or_create_product(plan_key: str, plan_label: str, price_cents: i
             price_cents=price_cents,
             paypal_product_id=product_id,
             paypal_plan_id=stored.get("paypal_plan_id", ""),
+            paypal_trial_days=stored.get("paypal_trial_days"),
             currency="USD",
             billing_cycle="monthly",
             product_kind="subscription",
@@ -290,7 +292,8 @@ def _paypal_get_or_create_product(plan_key: str, plan_label: str, price_cents: i
 def _paypal_get_or_create_plan(plan_key: str, plan_label: str, price_cents: int, product_id: str) -> str:
     stored = get_billing_product(plan_key) or {}
     plan_id = stored.get("paypal_plan_id", "")
-    if plan_id:
+    stored_trial_days = int(stored.get("paypal_trial_days") or 0)
+    if plan_id and stored_trial_days == PAYPAL_SUBSCRIPTION_TRIAL_DAYS:
         return plan_id
 
     access_token = _paypal_access_token()
@@ -305,9 +308,15 @@ def _paypal_get_or_create_plan(plan_key: str, plan_label: str, price_cents: int,
             "status": "ACTIVE",
             "billing_cycles": [
                 {
+                    "frequency": {"interval_unit": "DAY", "interval_count": PAYPAL_SUBSCRIPTION_TRIAL_DAYS},
+                    "tenure_type": "TRIAL",
+                    "sequence": 1,
+                    "total_cycles": 1,
+                },
+                {
                     "frequency": {"interval_unit": "MONTH", "interval_count": 1},
                     "tenure_type": "REGULAR",
-                    "sequence": 1,
+                    "sequence": 2,
                     "total_cycles": 0,
                     "pricing_scheme": {
                         "fixed_price": {
@@ -333,6 +342,7 @@ def _paypal_get_or_create_plan(plan_key: str, plan_label: str, price_cents: int,
             price_cents=price_cents,
             paypal_product_id=product_id,
             paypal_plan_id=plan_id,
+            paypal_trial_days=PAYPAL_SUBSCRIPTION_TRIAL_DAYS,
             currency="USD",
             billing_cycle="monthly",
             product_kind="subscription",
