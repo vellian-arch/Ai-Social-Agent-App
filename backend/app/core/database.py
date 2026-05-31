@@ -751,7 +751,7 @@ def create_user_account(email: str, password: str, name: str = "", role: str = "
         name=(name or normalized_email.split("@")[0]).strip(),
         role=role,
         subscription_status="trial",
-        trial_ends_at=datetime.utcnow() + timedelta(days=1),
+        trial_ends_at=datetime.utcnow() + timedelta(days=3),
     )
     try:
         execute_commit(stmt)

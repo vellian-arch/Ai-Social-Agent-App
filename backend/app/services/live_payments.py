@@ -40,7 +40,7 @@ PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "").strip()
 PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "").strip()
 PAYPAL_ENV = os.getenv("PAYPAL_ENV", "live").strip().lower()
 PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com" if PAYPAL_ENV == "sandbox" else "https://api-m.paypal.com"
-PAYPAL_SUBSCRIPTION_TRIAL_DAYS = 1
+PAYPAL_SUBSCRIPTION_TRIAL_DAYS = 3
 PAYPAL_RETURN_URL = _public_return_url(
     "/payments/paypal/return",
     os.getenv("PAYPAL_RETURN_URL", _DEFAULT_FRONTEND_URL).strip(),

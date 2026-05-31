@@ -108,7 +108,7 @@ def create_product(plan: BillingPlan) -> dict[str, Any]:
             "subscription_period_count": 1,
             "subscription_period_interval": "Month",
             "tax_inclusive": False,
-            "trial_period_days": 0,
+            "trial_period_days": 3,
             "type": "recurring_price",
         },
         "license_key_enabled": False,

@@ -111,10 +111,10 @@ PUBLIC_PAYPAL_PAYMENT_URL = os.getenv(
     "PUBLIC_PAYPAL_PAYMENT_URL",
     "https://ai-social-agent-app.onrender.com/support/paypal",
 )
-DEPLOYMENT_REVISION = "one-day-trial-before-subscription-2026-05-06"
+DEPLOYMENT_REVISION = "three-day-trial-before-subscription-2026-05-30"
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "").strip()
 PAYPAL_ANY_AMOUNT_URL = os.getenv("PAYPAL_ANY_AMOUNT_URL", "").strip()
-TRIAL_DAYS = 1
+TRIAL_DAYS = 3
 AUTH_SECRET = os.getenv("AUTH_SECRET", "social-ai-agent-dev-secret")
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587") or "587")
@@ -1969,7 +1969,10 @@ async def api_paypal_create_payment(payload: dict[str, Any], request: Request):
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    approve_link = next((link.get("href") for link in order.get("links", []) if link.get("rel") == "approve"), "")
+    approve_link = order.get("payment_link") or next(
+        (link.get("href") for link in order.get("links", []) if link.get("rel") in {"approve", "payer-action"}),
+        "",
+    )
     log_app_event(user["email"], "created", "payment_session", plan_key, platform="PayPal", details="PayPal order created")
     return {
         "status": "success",
